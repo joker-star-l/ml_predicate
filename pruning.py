@@ -54,6 +54,7 @@ def pruning(node_id, depth, result_nodes, onnx_model, joblib_model, f) -> int:  
                 break
 
         result = int(f(target_weights[target_id]))
+        result_nodes[node_id] = 'LEAF_TRUE' if result == 1 else 'LEAF_FALSE'
 
         # print(f'node_id: {node_id}, depth: {depth}, is_leaf: {is_leaf}, result: {result}')
 
@@ -67,14 +68,14 @@ def pruning(node_id, depth, result_nodes, onnx_model, joblib_model, f) -> int:  
 
         if left_result == 0 and right_result == 0:
             # print(f'node_id: {node_id}, depth: {depth}, is_leaf: {is_leaf}, result: {0}')
-            result_nodes[node_id] = 'LEAF'
+            result_nodes[node_id] = 'LEAF_FALSE'
             result_nodes[left_node_id] = 'REMOVED'
             result_nodes[right_node_id] = 'REMOVED'
             return 0
 
         if left_result == 1 and right_result == 1:
             # print(f'node_id: {node_id}, depth: {depth}, is_leaf: {is_leaf}, result: {1}')
-            result_nodes[node_id] = 'LEAF'
+            result_nodes[node_id] = 'LEAF_TRUE'
             result_nodes[left_node_id] = 'REMOVED'
             result_nodes[right_node_id] = 'REMOVED'
             return 1
@@ -116,7 +117,7 @@ print("total cost:", sum(node_cost_weights), "reduced cost:", reduced_cost_weigh
 # nodes_values: 阈值，叶子节点的值为0
 # post_transform
 
-def reg2clf(input_model, removed_nodes, f):    
+def reg2clf(input_model, removed_nodes):    
     # input model attributes
     # # n_targets
     input_n_targets = get_attribute(input_model, 'n_targets').i
@@ -150,129 +151,69 @@ def reg2clf(input_model, removed_nodes, f):
     input_target_weights = get_attribute(input_model, 'target_weights').floats
     
     # attribute
-    leaf_count = removed_nodes.count('LEAF')
+    leaf_count = removed_nodes.count('LEAF_FALSE') + removed_nodes.count('LEAF_TRUE')
 
     new_ids = []
     id_ = 0
     for node in removed_nodes:
-        if node == 'LEAF':
-            new_ids.append([id_, 'LEAF'])
+        if (node == 'LEAF_FALSE' or node == 'LEAF_TRUE'):
+            new_ids.append([id_, node])
             id_ += 1
         elif node == 'BRANCH_LEQ':
-            new_ids.append([id_, 'BRANCH_LEQ'])
+            new_ids.append([id_, node])
             id_ += 1
         else:
-            new_ids.append([-1, 'REMOVED'])
+            new_ids.append([-1, node])
 
     # # class_ids: 叶子节点权重对应的类别id
-    class_ids = helper.make_attribute(
-        key='class_ids',
-        value=[0] * leaf_count
-    )
-    onnx.checker.check_attribute(class_ids)
+    class_ids = [0] * leaf_count
 
     # # class_nodeids: 叶子节点权重对应的节点id
-    class_nodeids = helper.make_attribute(
-        key='class_nodeids',
-        value=[new_ids[i][0] for i in input_target_nodeids if new_ids[i][0] != -1]
-    )
-    onnx.checker.check_attribute(class_nodeids)
+    class_nodeids = [new_id[0] for new_id in new_ids if (new_id[1] == 'LEAF_FALSE' or new_id[1] == 'LEAF_TRUE')]
 
     # # class_treeids: 叶子节点权重对应的树id
-    class_treeids = helper.make_attribute(
-        key='class_treeids',
-        value=[0] * leaf_count
-    )
-    onnx.checker.check_attribute(class_treeids)
+    class_treeids = [0] * leaf_count
 
     # # class_weights: 叶子节点权重，即预测值
-    class_weights = helper.make_attribute(
-        key='class_weights',
-        value=[int(f(weight)) for i, weight in enumerate(input_target_weights) if new_ids[input_target_nodeids[i]][0] != -1]
-    )
-    onnx.checker.check_attribute(class_weights)
+    class_weights = [float(int(new_id[1] == 'LEAF_TRUE')) for new_id in new_ids if (new_id[1] == 'LEAF_FALSE' or new_id[1] == 'LEAF_TRUE')]
 
     # # classlabels_int64s: 类别id
-    classlabels_int64s = helper.make_attribute(
-        key='classlabels_int64s',
-        value=[0, 1]
-    )
-    onnx.checker.check_attribute(classlabels_int64s)
+    classlabels_int64s = [0, 1]
 
     # # nodes_falsenodeids: 右侧分支
-    nodes_falsenodeids = helper.make_attribute(
-        key='nodes_falsenodeids',
-        value=[new_ids[ii][0] for i , ii in enumerate(input_nodes_falsenodeids) if new_ids[i][1] != 'REMOVED']
-    )
-    onnx.checker.check_attribute(nodes_falsenodeids)
+    nodes_falsenodeids = [(new_ids[ii][0] if new_ids[ii][0] != -1 else 0) for i , ii in enumerate(input_nodes_falsenodeids) if new_ids[i][1] != 'REMOVED']
 
     # # nodes_featureids: 特征id
-    nodes_featureids = helper.make_attribute(
-        key='nodes_featureids',
-        value=[ii for i, ii in enumerate(input_nodes_featureids) if new_ids[i][0] != -1]
-    )
-    onnx.checker.check_attribute(nodes_featureids)
+    nodes_featureids = [(ii if new_ids[i][1] == 'BRANCH_LEQ' else 0) for i, ii in enumerate(input_nodes_featureids) if new_ids[i][0] != -1]
 
     # # nodes_hitrates
-    nodes_hitrates = helper.make_attribute(
-        key='nodes_hitrates',
-        value=[ii for i, ii in enumerate(input_nodes_hitrates) if new_ids[i][0] != -1]
-    )
-    onnx.checker.check_attribute(nodes_hitrates)
+    nodes_hitrates = [ii for i, ii in enumerate(input_nodes_hitrates) if new_ids[i][0] != -1]
 
     # # nodes_missing_value_tracks_true
-    nodes_missing_value_tracks_true = helper.make_attribute(
-        key='nodes_missing_value_tracks_true',
-        value=[ii for i, ii in enumerate(input_nodes_missing_value_tracks_true) if new_ids[i][0] != -1]
-    )
-    onnx.checker.check_attribute(nodes_missing_value_tracks_true)
+    nodes_missing_value_tracks_true = [ii for i, ii in enumerate(input_nodes_missing_value_tracks_true) if new_ids[i][0] != -1]
 
     # # nodes_modes：节点类型，LEAF表示叶子节点，BRANCH_LEQ表示非叶子节点
-    nodes_modes = helper.make_attribute(
-        key='nodes_modes',
-        value=[ii for i, ii in enumerate(input_node_modes) if new_ids[i][0] != -1]
-    )
-    onnx.checker.check_attribute(nodes_modes)
+    nodes_modes = [('BRANCH_LEQ' if new_id[1] == 'BRANCH_LEQ' else 'LEAF') for new_id in new_ids if new_id[0] != -1]
 
     # # nodes_nodeids
-    nodes_nodeids = helper.make_attribute(
-        key='nodes_nodeids',
-        value=[ii for i, ii in enumerate(input_nodes_nodeids) if new_ids[i][0] != -1]
-    )
-    onnx.checker.check_attribute(nodes_nodeids)
+    nodes_nodeids = [new_ids[i][0] for i, _ in enumerate(input_nodes_nodeids) if new_ids[i][0] != -1]
 
     # # nodes_treeids
-    nodes_treeids = helper.make_attribute(
-        key='nodes_treeids',
-        value=[ii for i, ii in enumerate(input_nodes_treeids) if new_ids[i][0] != -1]
-    )
-    onnx.checker.check_attribute(nodes_treeids)
+    nodes_treeids = [ii for i, ii in enumerate(input_nodes_treeids) if new_ids[i][0] != -1]
 
     # # nodes_truenodeids: 左侧分支
-    nodes_truenodeids = helper.make_attribute(
-        key='nodes_truenodeids',
-        value=[new_ids[ii][0] for i , ii in enumerate(input_nodes_truenodeids) if new_ids[i][1] != 'REMOVED']
-    )
-    onnx.checker.check_attribute(nodes_truenodeids)
+    nodes_truenodeids = [(new_ids[ii][0] if new_ids[ii][0] != -1 else 0) for i , ii in enumerate(input_nodes_truenodeids) if new_ids[i][1] != 'REMOVED']
 
     # # nodes_values: 阈值，叶子节点的值为0
-    nodes_values = helper.make_attribute(
-        key='nodes_values',
-        value=[ii for i, ii in enumerate(input_nodes_values) if new_ids[i][0] != -1]
-    )
-    onnx.checker.check_attribute(nodes_values)
+    nodes_values = [(ii if new_ids[i][1] == 'BRANCH_LEQ' else 0) for i, ii in enumerate(input_nodes_values) if new_ids[i][0] != -1]
 
     # # post_transform
-    post_transform = helper.make_attribute(
-        key='post_transform',
-        value=input_post_transform
-    )
-    onnx.checker.check_attribute(post_transform)
+    post_transform = input_post_transform
 
     # node
     node = helper.make_node(
         op_type='TreeEnsembleClassifier',
-        inputs=input_model.graph.input[0].name,
+        inputs=[input_model.graph.input[0].name],
         outputs=['label', 'probabilities'],
         name='TreeEnsembleClassifier',
         domain='ai.onnx.ml',
@@ -294,8 +235,6 @@ def reg2clf(input_model, removed_nodes, f):
         post_transform=post_transform
     )
 
-    onnx.checker.check_node(node)
-
     # graph
     label = helper.make_tensor_value_info(
         name='label',
@@ -316,8 +255,6 @@ def reg2clf(input_model, removed_nodes, f):
         inputs=model.graph.input,
         outputs=[label, probabilities],
     )
-
-    onnx.checker.check_graph(graph)
     
     # model
     output_model = helper.make_model(
@@ -330,5 +267,7 @@ def reg2clf(input_model, removed_nodes, f):
 
     return output_model
 
-output_model = reg2clf(model, result_nodes, func)
-print(output_model)
+output_model = reg2clf(model, result_nodes)
+# print(output_model)
+
+onnx.save_model(output_model, model_path.replace('model/', 'model_output/') + '_clf.onnx')

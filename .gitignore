@@ -1,3 +1,6 @@
 model/
 model_clf/
 data/
+model_output/
+onnxruntime_profile*
+chore.txt
