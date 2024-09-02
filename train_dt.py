@@ -7,11 +7,19 @@ import onnx
 import datetime
 from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType
+import argparse
 
+from utils import get_attribute
 
-data = 'house_16H'
-tree_depth = 15
-data_count = 10000
+parser = argparse.ArgumentParser()
+parser.add_argument('--data', '-d', type=str)
+parser.add_argument('--tree_depth', '-td', type=int)
+parser.add_argument('--data_count', '-dc', type=int)
+args = parser.parse_args()
+
+data = args.data
+tree_depth = args.tree_depth
+data_count = args.data_count
 
 data_path = f'data/{data}.csv'
 df = pd.read_csv(data_path)
@@ -49,3 +57,18 @@ onnx_path = f'model/{model_name}.onnx'
 joblib.dump(model, joblib_path)
 model_onnx = convert_sklearn(model, initial_types=[('float_input', FloatTensorType([None, X_train.shape[1]]))])
 onnx.save_model(model_onnx, onnx_path)
+
+with open('model/model_name.txt', 'w', encoding='utf-8') as f:
+    f.write(f'{model_name}\n')
+
+bucket_num = 10
+with open('model/model_leaf_range.txt', 'w', encoding='utf-8') as f:
+    leaves = list(set(get_attribute(model_onnx, 'target_weights').floats))
+    leaves.sort()
+    second_min_leaf = leaves[1]
+    second_max_leaf = leaves[-2]
+    bucket_size = (second_max_leaf - second_min_leaf) / bucket_num
+    print('second_min_leaf:', second_min_leaf, 'second_max_leaf:', second_max_leaf, 'bucket_size:', bucket_size)
+    for i in range(bucket_num):
+        second_min_leaf += bucket_size
+        f.write(str(second_min_leaf) + '\n')

@@ -4,3 +4,5 @@ data/
 model_output/
 onnxruntime_profile*
 chore.txt
+log
+__pycache__/

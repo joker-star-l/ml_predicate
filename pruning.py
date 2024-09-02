@@ -2,7 +2,14 @@ import onnx
 import joblib
 from onnx import helper
 import onnx.checker
+import argparse
 
+from utils import get_attribute
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--model', '-m', type=str)
+parser.add_argument('--predicate', '-p', type=float)
+args = parser.parse_args()
 
 # 回归树node attributes
 # n_targets
@@ -41,15 +48,8 @@ import onnx.checker
 # post_transform
 
 
-model_path = 'model/house_16H_d15_l2404_n4807_20240822085956'
-func = lambda x: x > 10
-
-
-def get_attribute(onnx_model, attr_name):
-    attributes = onnx_model.graph.node[0].attribute
-    for attr in attributes:
-        if attr.name == attr_name:
-            return attr
+model_path = f'model/{args.model}'
+func = lambda x: x > args.predicate
 
 
 def pruning(node_id, depth, result_nodes, onnx_model, joblib_model, f) -> int:  # 0: leaf_false, 1: leaf_true, 2: inner
