@@ -73,4 +73,4 @@ with open('model/model_leaf_range.txt', 'w', encoding='utf-8') as f:
     print('second_min_leaf:', second_min_leaf, 'second_max_leaf:', second_max_leaf, 'bucket_size:', bucket_size)
     for i in range(bucket_num):
         second_min_leaf += bucket_size
-        f.write(str(second_min_leaf) + '\n')
+        f.write(str(round(second_min_leaf, 6)) + '\n')

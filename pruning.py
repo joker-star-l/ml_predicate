@@ -109,7 +109,7 @@ result_nodes = [None] * len(get_attribute(model, 'nodes_modes').strings)
 pruning(0, 0, result_nodes, model, None, func)
 print(result_nodes)
 removed_count = result_nodes.count('REMOVED')
-print("total nodes:", len(result_nodes), "removed nodes:", removed_count, removed_count / len(result_nodes), f"performance: {len(result_nodes) / (len(result_nodes) - removed_count)}x")
+print("total nodes:", len(result_nodes), "removed nodes:", removed_count, removed_count / len(result_nodes))
 
 model_joblib = joblib.load(model_path + '.joblib')
 node_cost_weights = model_joblib.tree_.n_node_samples

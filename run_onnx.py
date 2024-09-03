@@ -3,6 +3,8 @@ import onnxruntime as ort
 import time
 import argparse
 
+# python run_onnx.py -d house_16H -s 1G -m house_16H_d10_l405_n809_20240903080046 -p 13.120699882507319 --pruned -t 1
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--pruned', action='store_true')
 parser.add_argument('--enable_profiling', '-ep', action='store_true')
@@ -48,7 +50,7 @@ if enable_profiling:
     ses.end_profiling()
 end = time.time()
 
-print(pred)
+print(pred, pred.shape)
 if not pruned:
     print(f'pred: {func(pred.reshape(-1)).sum()}')
 else:
