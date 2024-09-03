@@ -2,9 +2,9 @@ import pandas as pd
 import numpy as np
 
 # house_16H
-data = 'house_16H'
-scale_1G = 341
-y_label = 'price'
+data = 'nyc-taxi-green-dec-2016'
+scale_1G = 65
+y_label = 'tipamount'
 
 # TO 1G
 data_path = f'./data/{data}.csv'

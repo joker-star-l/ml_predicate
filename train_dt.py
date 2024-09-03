@@ -15,18 +15,20 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data', '-d', type=str)
 parser.add_argument('--tree_depth', '-td', type=int)
 parser.add_argument('--data_count', '-dc', type=int)
+parser.add_argument('--label', '-l', type=str)
 args = parser.parse_args()
 
 data = args.data
 tree_depth = args.tree_depth
 data_count = args.data_count
+label =args.label
 
 data_path = f'data/{data}.csv'
 df = pd.read_csv(data_path)
 df = df.head(data_count)
 
-X = df.drop(columns=['price'])
-y = df['price']
+X = df.drop(columns=[label])
+y = df[label]
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 

@@ -36,7 +36,7 @@ op = ort.SessionOptions()
 if enable_profiling:
     op.enable_profiling = True
 
-op.intra_op_num_threads = 1
+op.intra_op_num_threads = threads
 ses = ort.InferenceSession(mode_path, sess_options=op, providers=['CPUExecutionProvider'])
 input_name = ses.get_inputs()[0].name
 
