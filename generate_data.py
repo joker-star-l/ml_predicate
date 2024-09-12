@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 
-# house_16H
 data = 'Ailerons'
 scale_1G = 450
 y_label = 'goal'

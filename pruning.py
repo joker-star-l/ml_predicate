@@ -3,6 +3,7 @@ import joblib
 from onnx import helper
 import onnx.checker
 import argparse
+import pandas as pd
 
 from utils import get_attribute
 
@@ -414,3 +415,11 @@ output_model = reg2reg(model, result_nodes)
 # print(output_model)
 
 onnx.save_model(output_model, model_path.replace('model/', 'model_output/') + '_out.onnx')
+
+node_samples = []
+for i, stat in enumerate(result_nodes):
+    if stat != 'REMOVED':
+        node_samples.append(node_cost_weights[i])
+
+df = pd.DataFrame(node_samples, columns=['node_samples'])
+df.to_csv(model_path.replace('model/', 'model_output/') + '_out_node_samples.csv', index=True)
