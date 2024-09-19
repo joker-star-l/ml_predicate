@@ -1,8 +1,8 @@
 import onnx
 from utils import get_attribute
 
-model_name = 'house_16H_d10_l405_n809_20240912085537_out'
-model_path = f'model_output/{model_name}'
+model_name = 'nyc-taxi-green-dec-2016_d10_l451_n901_20240915174146'
+model_path = f'model_output/{model_name}_out'
 
 model = onnx.load(model_path + '.onnx')
 # nodes_truenodeids: 左侧分支

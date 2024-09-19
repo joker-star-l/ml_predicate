@@ -7,13 +7,13 @@ import time
 data = 'house_16H'
 scale = '1G'
 thread_duckdb = 1
-thread_udf = 1
+thread_udf = 2
 features = ['P1','P5p1','P6p2','P11p4','P14p9','P15p1','P15p3','P16p2','P18p2','P27p4','H2p2','H8p2','H10p1','H13p1','H18pA','H40p4']
 
 pruned = True
 test_only = False
 func =  '> 10'
-model = 'house_16H_d10_l405_n809_20240822085650'
+model = 'house_16H_d10_l405_n809_20240912092845'
 if not pruned:
     mode_path = f'model/{model}.onnx'
     output = 'variable'

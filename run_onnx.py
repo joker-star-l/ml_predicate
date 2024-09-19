@@ -6,7 +6,7 @@ import argparse
 # python run_onnx.py -d house_16H -s 1G -m house_16H_d10_l405_n809_20240903080046 -p 13.120699882507319 --pruned -t 1
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--pruned', action='store_true')
+parser.add_argument('--pruned', type=int, default=0)
 parser.add_argument('--enable_profiling', '-ep', action='store_true')
 parser.add_argument('--threads', '-t', type=int, default=4)
 parser.add_argument('--data', '-d', type=str)
@@ -23,17 +23,22 @@ scale = args.scale
 model = args.model
 func = lambda x: x > args.predicate
 
-if not pruned:
+if pruned == 0:
     mode_path = f'model/{model}.onnx'
     output = 'variable'
-else:
+elif pruned == 1:
     mode_path = f'model_output/{model}_out.onnx'
     output = 'variable'
+elif pruned == 2:
+    mode_path = f'model_output/{model}_out2.onnx'
+    output = 'variable'
+else:
+    raise ValueError('pruned must be 0 or 1 or 2')
 
 data_path = f'data/{data}_{scale}.npy'
 X = np.load(data_path)
 
-start = time.time()
+start = time.perf_counter()
 op = ort.SessionOptions()
 if enable_profiling:
     op.enable_profiling = True
@@ -48,7 +53,7 @@ for _ in range(times):
 
 if enable_profiling:
     ses.end_profiling()
-end = time.time()
+end = time.perf_counter()
 
 print(pred, pred.shape)
 if not pruned:
