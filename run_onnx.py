@@ -47,7 +47,7 @@ op.intra_op_num_threads = threads
 ses = ort.InferenceSession(mode_path, sess_options=op, providers=['CPUExecutionProvider'])
 input_name = ses.get_inputs()[0].name
 
-times = 3
+times = 5
 for _ in range(times):
     pred = ses.run([output], {input_name: X})[0]
 

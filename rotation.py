@@ -1,3 +1,5 @@
+#  该代码废弃，旋转难以解决全部的情况，需要使用动态规划
+
 import onnx
 import time
 from onnx import helper
@@ -6,7 +8,7 @@ from utils import get_attribute
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', '-m', type=str)
+parser.add_argument('--model', '-m', type=str, default='nyc-taxi-green-dec-2016_d10_l448_n895_20240919101404')
 args = parser.parse_args()
 
 model_name = args.model
@@ -244,8 +246,8 @@ def rotate(node: 'Node', root: list['Node']):
             can_merge = right_is_leaf and left_right_is_leaf and node.left.right.target_weight == node.right.target_weight
             
             if can_merge:  # 可以合并，直接旋转并合并
-                print('can_merge:', node.samples)
-                reduced_cost += node.samples
+                print('can_merge:', node.left.samples)
+                reduced_cost += node.left.samples
                 
                 left = node.left
                 
@@ -298,8 +300,8 @@ def rotate(node: 'Node', root: list['Node']):
             can_merge = left_is_leaf and right_left_is_leaf and node.right.left.target_weight == node.left.target_weight
 
             if can_merge:  # 可以合并，直接旋转并合并
-                print('can_merge:', node.samples)
-                reduced_cost += node.samples
+                print('can_merge:', node.right.samples)
+                reduced_cost += node.right.samples
 
                 right = node.right
 
@@ -353,15 +355,45 @@ def rotate(node: 'Node', root: list['Node']):
             can_merge = left_right_is_leaf and right_left_is_leaf and node.left.right.target_weight == node.right.left.target_weight
 
             if can_merge:  # 可以合并，直接旋转并合并
-                print('can_merge:', node.left.samples, node.right.samples)
-                reduced_cost += max(node.left.samples, node.right.samples)
+                print('can_merge')
 
-                # TODO
+                if node.left.left.samples <= node.right.right.samples: # 左结合
+                    print('left_merge:', node.right.right.samples)
+                    reduced_cost += node.right.right.samples
+
+                else:  # 右结合
+                    print('right_merge:', node.left.left.samples)
+                    reduced_cost += node.left.left.samples
 
             else:  # 不能合并，需要计算代价判断是需要旋转
                 print('cannot_merge')
 
-                # TODO
+                cost_origin = node.left.samples + node.right.samples                                              # ((ab)(cd))
+                cost_case_a = node.left.samples * 2 + node.right.left.samples                                     # (((ab)c)d)
+                cost_case_b = (node.left.right.samples + node.right.left.samples) * 2 + node.left.left.samples    # ((a(bc))d)
+                cost_case_c = (node.left.right.samples + node.right.left.samples) * 2 + node.right.right.samples  # (a((bc)d))
+                cost_case_d = node.right.samples * 2 + node.left.right.samples                                    # (a(b(cd)))
+
+                cost_min = min(cost_origin, cost_case_a, cost_case_b, cost_case_c, cost_case_d)
+                if cost_min == cost_origin:
+                    print('donot_need_rotate ((ab)(cd)):', cost_origin, cost_min)
+                
+                elif cost_min == cost_case_a:
+                    print('need_rotate (((ab)c)d):', cost_origin, cost_min)
+                    reduced_cost += (cost_origin - cost_min)
+                
+                elif cost_min == cost_case_b:
+                    print('need_rotate ((a(bc))d):', cost_origin, cost_min)
+                    reduced_cost += (cost_origin - cost_min)
+                
+                elif cost_min == cost_case_c:
+                    print('need_rotate (a((bc)d)):', cost_origin, cost_min)
+                    reduced_cost += (cost_origin - cost_min)
+                
+                elif cost_min == cost_case_d:
+                    print('need_rotate (a(b(cd))):', cost_origin, cost_min)
+                    reduced_cost += (cost_origin - cost_min)
+
 
 start = time.perf_counter()
 root = model2tree(model, samples_list, 0, None)
