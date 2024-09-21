@@ -34,6 +34,22 @@ class Node:
             samples += self.right.branch_samples()
         
         return samples
+    
+    def same_feature_branch_samples(self) -> int:
+        samples = self.samples
+        
+        if self.left is not None:
+            if self.left.mode == b'LEAF' or self.left.feature_id != self.feature_id:
+                samples += self.left.samples
+            else:
+                samples += self.left.same_feature_branch_samples()
+        if self.right is not None:
+            if self.right.mode == b'LEAF' or self.right.feature_id != self.feature_id:
+                samples += self.right.samples
+            else:
+                samples += self.right.same_feature_branch_samples()
+        
+        return samples
 
 class TreeEnsembleRegressor:
     def __init__(self):
