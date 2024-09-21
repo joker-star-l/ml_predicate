@@ -25,7 +25,9 @@ label =args.label
 
 data_path = f'data/{data}.csv'
 df = pd.read_csv(data_path)
-df = df.head(data_count)
+data_count = min(data_count, df.shape[0])
+print(f'data_count: {data_count}')
+df = df.sample(n=data_count)
 
 X = df.drop(columns=[label])
 y = df[label]

@@ -38,6 +38,7 @@ else:
 data_path = f'data/{data}_{scale}.npy'
 X = np.load(data_path)
 
+costs = []
 start = time.perf_counter()
 op = ort.SessionOptions()
 if enable_profiling:
@@ -49,18 +50,24 @@ input_name = ses.get_inputs()[0].name
 
 times = 5
 for _ in range(times):
+    start0 = time.perf_counter()
     pred = ses.run([output], {input_name: X})[0]
+    end0 = time.perf_counter()
+    costs.append(end0 - start0)
 
 if enable_profiling:
     ses.end_profiling()
 end = time.perf_counter()
+
+costs.sort()
+cost = (end - start - costs[0] - costs[-1]) / (times - 2)
 
 print(pred, pred.shape)
 if not pruned:
     print(f'pred: {func(pred.reshape(-1)).sum()}')
 else:
     print(f'pred: {pred.sum()}')
-print(f'cost: {(end - start) / times}')
+print(f'cost: {cost}')
 
 with open('result.csv', 'a', encoding='utf-8') as f:
-    f.write(f'{model},{pruned},{args.predicate},{data},{scale},{threads},{(end - start) / times}\n')
+    f.write(f'{model},{pruned},{args.predicate},{data},{scale},{threads},{cost}\n')
