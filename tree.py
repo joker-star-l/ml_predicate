@@ -51,6 +51,21 @@ class Node:
         
         return samples
 
+    # 重置权重
+    def replace_samples(self) -> int:
+        if self.mode == b'LEAF':
+            self.samples = 1
+            return self.samples
+
+        self.samples = self.left.replace_samples() + self.right.replace_samples()
+        return self.samples
+
+    def get_samples_list(self, samples_list: list[int]):
+        samples_list.append(self.samples)
+        if self.mode != b'LEAF':
+            self.left.get_samples_list(samples_list)
+            self.right.get_samples_list(samples_list)
+
 class TreeEnsembleRegressor:
     def __init__(self):
         self.n_targets: int = 1
