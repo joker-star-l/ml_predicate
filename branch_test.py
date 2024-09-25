@@ -99,25 +99,41 @@ def create_right_tree(node: 'Node', i: int, depth: int):
 
     node.samples = node.left.samples + node.right.samples
 
-node = Node(
-    id=0,
-    feature_id=0,
-    mode=b'BRANCH_LEQ',
-    value=float(depth) if left else 0.0,
-    target_id=None,
-    target_weight=None,
-    samples=None
-)
-if left:
-    create_left_tree(node, 0, depth)
+real_depth = 1000
+if real_depth == 0:
+    node = Node(
+        id=0,
+        feature_id=0,
+        mode=b'LEAF',
+        value=0.0,
+        target_id=None,
+        target_weight=1.0,
+        samples=1
+    )
 else:
-    create_right_tree(node, 0, depth)
+    node = Node(
+        id=0,
+        feature_id=0,
+        mode=b'BRANCH_LEQ',
+        value=float(depth) if left else 0.0,
+        target_id=None,
+        target_weight=None,
+        samples=None
+    )
+    if left:
+        create_left_tree(node, 0, real_depth)
+    else:
+        create_right_tree(node, 0, real_depth)
+
 regressor = TreeEnsembleRegressor.from_tree(node)
 any_model = onnx.load('model/Ailerons_d10_l701_n1401_20240903092934.onnx')
 any_model.graph.input[0].type.tensor_type.shape.dim[1].dim_value = 1
 model = regressor.to_model(any_model)
 
-X = (depth + 2) * (-1 if left else 1) * np.ones((1000000, 1), dtype=np.float32)
+if left:
+    X = np.ones((1000000, 1), dtype=np.float32)
+else:
+    X = depth * np.ones((1000000, 1), dtype=np.float32)
 
 costs = []
 start = time.perf_counter()
