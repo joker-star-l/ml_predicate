@@ -8,13 +8,32 @@
 # data=nyc-taxi-green-dec-2016
 # label=tipamount
 
-data=Ailerons
-label=goal
+# data=Ailerons
+# label=goal
 
-tree_depth=10
-train_data_count=10000
-scale=1G
-threads=1
+# tree_depth=10
+# train_data_count=10000
+# scale=1G
+# threads=1
+
+while [ "$#" -gt 0 ]; do
+    case $1 in
+        -d|--data) data=$2; shift 2;;
+        -l|--label) label=$2; shift 2;;
+        -td|--tree_depth) tree_depth=$2; shift 2;;
+        -dc|--data_count) train_data_count=$2; shift 2;;
+        -s|--scale) scale=$2; shift 2;;
+        -t|--threads) threads=$2; shift 2;;
+        *) echo "Unknown parameter passed: $1"; exit 1;;
+    esac
+done
+
+echo "data: $data"
+echo "label: $label"
+echo "tree_depth: $tree_depth"
+echo "train_data_count: $train_data_count"
+echo "scale: $scale"
+echo "threads: $threads"
 
 python train_dt.py -d $data -td $tree_depth -dc $train_data_count -l $label
 model_name=$(cat ./model/model_name.txt)
