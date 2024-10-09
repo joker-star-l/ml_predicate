@@ -158,7 +158,7 @@ class TreeEnsembleRegressor:
 
         regressor.nodes_falsenodeids.append(node.right.id if not is_leaf else 0)
         regressor.nodes_featureids.append(node.feature_id)
-        regressor.nodes_hitrates.append(1.0)
+        regressor.nodes_hitrates.append(float(node.samples))
         regressor.nodes_missing_value_tracks_true.append(0)
         regressor.nodes_modes.append(node.mode)
         regressor.nodes_nodeids.append(node.id)
@@ -176,7 +176,7 @@ class TreeEnsembleRegressor:
             TreeEnsembleRegressor.from_tree_internal(regressor, node.left)
             TreeEnsembleRegressor.from_tree_internal(regressor, node.right)
 
-def model2tree(input_model, samples_list, node_id, parent: 'Node | None') -> 'Node':
+def model2tree(input_model, samples_list: 'List[int] | None', node_id, parent: 'Node | None') -> 'Node':
     # input model attributes
     # # n_targets
     input_n_targets = get_attribute(input_model, 'n_targets').i
@@ -218,7 +218,13 @@ def model2tree(input_model, samples_list, node_id, parent: 'Node | None') -> 'No
     value = input_nodes_values[id]
     target_id = input_target_nodeid_map.get(id, None)
     target_weight = input_target_weights[target_id] if target_id is not None else None
-    samples = samples_list[id]
+    samples = int(input_nodes_hitrates[id])
+    
+    # only for debug
+    if samples_list is not None:
+        if samples != samples_list[id]:
+            raise ValueError(f'samples not match: {samples} != {samples_list[id]}')
+    
     node = Node(
         id=id,
         feature_id=feature_id,

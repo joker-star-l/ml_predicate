@@ -114,7 +114,6 @@ print("total nodes:", len(result_nodes), "removed nodes:", removed_count, remove
 
 model_joblib = joblib.load(model_path + '.joblib')
 node_cost_weights = model_joblib.tree_.n_node_samples
-# node_cost_weights = node_cost_weights / node_cost_weights[0]
 # print(node_cost_weights)
 reduced_cost_weights = sum([node_cost_weights[i] for i, node in enumerate(result_nodes) if node == 'REMOVED'])
 print("total cost:", sum(node_cost_weights), "reduced cost:", reduced_cost_weights, f"performance: {sum(node_cost_weights) / (sum(node_cost_weights) - reduced_cost_weights)}x")
@@ -420,6 +419,11 @@ node_samples = []
 for i, stat in enumerate(result_nodes):
     if stat != 'REMOVED':
         node_samples.append(node_cost_weights[i])
+
+# only for debug
+for i, f in enumerate(get_attribute(output_model, "nodes_hitrates").floats):
+    if node_samples[i] != int(f):
+        raise Exception(f"node_samples[{i}] != int(f), {node_samples[i]} != {int(f)}")
 
 df = pd.DataFrame(node_samples, columns=['node_samples'])
 df.to_csv(model_path.replace('model/', 'model_output/') + '_out_node_samples.csv', index=True)

@@ -8,7 +8,7 @@ from tree import Node, TreeEnsembleRegressor, model2tree
 # although calls dp, no dp here!!!
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', '-m', type=str, default='nyc-taxi-green-dec-2016_d10_l480_n959_20241009063348')
+parser.add_argument('--model', '-m', type=str, default='house_16H_d10_l280_n559_20241009120728')
 args = parser.parse_args()
 
 model_name = args.model
@@ -149,5 +149,13 @@ print(f'Reduced cost: {reduced_cost}')
 # only for debug
 if root.branch_samples() + reduced_cost != sum(samples_list):
     raise ValueError('Branch samples not match')
+
+# only for debug
+def debug_samples(root: 'Node') :
+    if root.mode != b'LEAF':
+        if root.samples != debug_samples(root.left) + debug_samples(root.right):
+            raise ValueError('Samples not match')
+    return root.samples
+debug_samples(root)
 
 print(f'Performance: {sum(samples_list) / (sum(samples_list) - reduced_cost)}')

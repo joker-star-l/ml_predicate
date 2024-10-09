@@ -60,6 +60,9 @@ onnx_path = f'model/{model_name}.onnx'
 
 joblib.dump(model, joblib_path)
 model_onnx = convert_sklearn(model, initial_types=[('float_input', FloatTensorType([None, X_train.shape[1]]))])
+nodes_hitrates = get_attribute(model_onnx, 'nodes_hitrates').floats
+for i in range(len(nodes_hitrates)):
+    nodes_hitrates[i] = model.tree_.n_node_samples[i]
 onnx.save_model(model_onnx, onnx_path)
 
 with open('model/model_name.txt', 'w', encoding='utf-8') as f:
