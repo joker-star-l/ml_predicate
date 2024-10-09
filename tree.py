@@ -1,6 +1,7 @@
 import onnx
 from onnx import helper
 from utils import get_attribute
+from typing import List
 
 class Node:
     def __init__(
@@ -35,6 +36,12 @@ class Node:
         
         return samples
     
+    def cost(self, alpha: float) -> float:
+        if self.mode == b'LEAF':
+            return self.samples
+
+        return self.left.cost(alpha) + self.right.cost(alpha) + alpha * self.left.samples  + self.right.samples
+
     def same_feature_branch_samples(self) -> int:
         samples = self.samples
         
@@ -60,7 +67,7 @@ class Node:
         self.samples = self.left.replace_samples() + self.right.replace_samples()
         return self.samples
 
-    def get_samples_list(self, samples_list: list[int]):
+    def get_samples_list(self, samples_list: List[int]):
         samples_list.append(self.samples)
         if self.mode != b'LEAF':
             self.left.get_samples_list(samples_list)
@@ -69,20 +76,20 @@ class Node:
 class TreeEnsembleRegressor:
     def __init__(self):
         self.n_targets: int = 1
-        self.nodes_falsenodeids: list[int] = []
-        self.nodes_featureids: list[int] = []
-        self.nodes_hitrates: list[float] = []
-        self.nodes_missing_value_tracks_true: list[int] = []
-        self.nodes_modes: list[bytes] = []
-        self.nodes_nodeids: list[int] = []
-        self.nodes_treeids: list[int] = []
-        self.nodes_truenodeids: list[int] = []
-        self.nodes_values: list[float] = []
+        self.nodes_falsenodeids: List[int] = []
+        self.nodes_featureids: List[int] = []
+        self.nodes_hitrates: List[float] = []
+        self.nodes_missing_value_tracks_true: List[int] = []
+        self.nodes_modes: List[bytes] = []
+        self.nodes_nodeids: List[int] = []
+        self.nodes_treeids: List[int] = []
+        self.nodes_truenodeids: List[int] = []
+        self.nodes_values: List[float] = []
         self.post_transform: bytes = b'NONE'
-        self.target_ids: list[int] = []
-        self.target_nodeids: list[int] = []
-        self.target_treeids: list[int] = []
-        self.target_weights: list[float] = []
+        self.target_ids: List[int] = []
+        self.target_nodeids: List[int] = []
+        self.target_treeids: List[int] = []
+        self.target_weights: List[float] = []
 
     def to_model(self, input_model: onnx.ModelProto) -> onnx.ModelProto:
         # node
@@ -136,7 +143,7 @@ class TreeEnsembleRegressor:
         TreeEnsembleRegressor.from_tree_internal(regressor, root)
         
         id_map = {old_id: i for i, old_id in enumerate(regressor.nodes_nodeids)}
-        print(id_map)
+        # print(id_map)
         is_leaf = [mode == b'LEAF' for mode in regressor.nodes_modes]
         regressor.nodes_falsenodeids = [(0 if is_leaf[i] else id_map[id]) for i, id in enumerate(regressor.nodes_falsenodeids)]
         regressor.nodes_truenodeids = [(0 if is_leaf[i] else id_map[id]) for i, id in enumerate(regressor.nodes_truenodeids)]
@@ -233,3 +240,92 @@ def model2tree(input_model, samples_list, node_id, parent: 'Node | None') -> 'No
         node.right = right_node
 
     return node
+
+
+#############
+# Test code #
+#############
+
+def create_left_tree(node: 'Node', i: int, depth: int):
+    if i == depth:
+        return
+    
+    if i == depth - 1:
+        left = Node(
+            id=i * 2 + 1,
+            feature_id=0,
+            mode=b'LEAF',
+            value=0,
+            target_id=None,
+            target_weight=1.0,
+            samples=1
+        )
+    else:
+        left = Node(
+            id=i * 2 + 1,
+            feature_id=node.feature_id,
+            mode=b'BRANCH_LEQ',
+            value=node.value - 1,
+            target_id=None,
+            target_weight=None,
+            samples=None
+        )
+    node.left = left
+    left.parent = node
+    create_left_tree(left, i + 1, depth)
+
+    right = Node(
+        id=i * 2 + 2,
+        feature_id=0,
+        mode=b'LEAF',
+        value=0,
+        target_id=None,
+        target_weight=0.0,
+        samples=1
+    )
+    node.right = right
+    right.parent = node
+
+    node.samples = node.left.samples + node.right.samples
+
+def create_right_tree(node: 'Node', i: int, depth: int):
+    if i == depth:
+        return
+    
+    if i == depth - 1:
+        right = Node(
+            id=i * 2 + 1,
+            feature_id=0,
+            mode=b'LEAF',
+            value=0,
+            target_id=None,
+            target_weight=1.0,
+            samples=1
+        )
+    else:
+        right = Node(
+            id=i * 2 + 1,
+            feature_id=node.feature_id,
+            mode=b'BRANCH_LEQ',
+            value=node.value + 1,
+            target_id=None,
+            target_weight=None,
+            samples=None
+        )
+    node.right = right
+    right.parent = node
+    create_right_tree(right, i + 1, depth)
+
+    left = Node(
+        id=i * 2 + 2,
+        feature_id=0,
+        mode=b'LEAF',
+        value=0,
+        target_id=None,
+        target_weight=0.0,
+        samples=1
+    )
+    node.left = left
+    left.parent = node
+
+    node.samples = node.left.samples + node.right.samples

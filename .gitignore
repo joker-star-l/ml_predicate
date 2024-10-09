@@ -6,3 +6,6 @@ onnxruntime_profile*
 chore.txt
 log*
 __pycache__/
+*.onnx
+branch_test.csv*
+branch_test2.csv*

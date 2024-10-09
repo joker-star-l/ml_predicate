@@ -12,10 +12,10 @@ import argparse
 from utils import get_attribute
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--data', '-d', type=str)
-parser.add_argument('--tree_depth', '-td', type=int)
-parser.add_argument('--data_count', '-dc', type=int)
-parser.add_argument('--label', '-l', type=str)
+parser.add_argument('--data', '-d', type=str,  default='house_16H')
+parser.add_argument('--tree_depth', '-td', type=int, default=10)
+parser.add_argument('--data_count', '-dc', type=int, default=10000)
+parser.add_argument('--label', '-l', type=str, default='price')
 args = parser.parse_args()
 
 data = args.data
