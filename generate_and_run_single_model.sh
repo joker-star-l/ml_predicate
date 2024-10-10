@@ -24,6 +24,7 @@ while [ "$#" -gt 0 ]; do
         -dc|--data_count) train_data_count=$2; shift 2;;
         -s|--scale) scale=$2; shift 2;;
         -t|--threads) threads=$2; shift 2;;
+        -b|--backend) backend=$2; shift 2;; # onnxruntime, sklearn
         *) echo "Unknown parameter passed: $1"; exit 1;;
     esac
 done
@@ -38,16 +39,38 @@ echo "threads: $threads"
 python train_dt.py -d $data -td $tree_depth -dc $train_data_count -l $label
 model_name=$(cat ./model/model_name.txt)
 
-python run_onnx.py -d $data -s $scale -m $model_name -p 0 -t $threads
+if [ "$backend" = "onnxruntime" ]; then
+    python run_onnx.py -d $data -s $scale -m $model_name -p 0 -t $threads
 
-while read predicate
-do
-    python pruning.py -m $model_name -p $predicate
-    python dp.py -m $model_name
+    while read predicate
+    do
+        python pruning.py -m $model_name -p $predicate
+        python dp.py -m $model_name
 
-    # python run_onnx.py -d $data -s $scale -m $model_name -p $predicate -t $threads
-    python run_onnx.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 1
-    python run_onnx.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 2
-    
-    # break
-done < ./model/model_leaf_range.txt
+        # python run_onnx.py -d $data -s $scale -m $model_name -p $predicate -t $threads
+        python run_onnx.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 1
+        python run_onnx.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 2
+        
+        # break
+    done < ./model/model_leaf_range.txt
+
+elif [ "$backend" = "sklearn" ]; then
+    python run_sklearn.py -d $data -s $scale -m $model_name -p 0 -t $threads
+
+    while read predicate
+    do
+        python pruning.py -m $model_name -p $predicate
+        python onnx2sklearn.py -m $model_name --pruned 1
+        python dp.py -m $model_name
+        python onnx2sklearn.py -m $model_name --pruned 2
+
+        python run_sklearn.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 1
+        python run_sklearn.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 2
+        
+        # break
+    done < ./model/model_leaf_range.txt
+
+else
+    echo "Unknown backend: $backend"
+    exit 1
+fi

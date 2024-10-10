@@ -1,13 +1,13 @@
 import numpy as np
-import onnxruntime as ort
 import time
 import argparse
+from sklearn.tree import DecisionTreeRegressor
+import joblib
 
-# python run_onnx.py -d house_16H -s 1G -m house_16H_d10_l405_n809_20240903080046 -p 13.120699882507319 --pruned 1 -t 1
+# python run_sklearn.py -d house_16H -s 1G -m house_16H_d10_l405_n809_20240903080046 -p 13.120699882507319 --pruned 0 -t 1
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--pruned', type=int, default=0)
-parser.add_argument('--enable_profiling', '-ep', action='store_true')
 parser.add_argument('--threads', '-t', type=int, default=4)
 parser.add_argument('--data', '-d', type=str)
 parser.add_argument('--scale', '-s', type=str)
@@ -16,7 +16,6 @@ parser.add_argument('--predicate', '-p', type=float)
 args = parser.parse_args()
 
 pruned = args.pruned
-enable_profiling = args.enable_profiling
 threads = args.threads
 data = args.data
 scale = args.scale
@@ -24,14 +23,11 @@ model = args.model
 func = lambda x: x > args.predicate
 
 if pruned == 0:
-    mode_path = f'model/{model}.onnx'
-    output = 'variable'
+    mode_path = f'model/{model}.joblib'
 elif pruned == 1:
-    mode_path = f'model_output/{model}_out.onnx'
-    output = 'variable'
+    mode_path = f'model_output/{model}_out.joblib'
 elif pruned == 2:
-    mode_path = f'model_output/{model}_out2.onnx'
-    output = 'variable'
+    mode_path = f'model_output/{model}_out2.joblib'
 else:
     raise ValueError('pruned must be 0 or 1 or 2')
 
@@ -40,23 +36,17 @@ X = np.load(data_path)
 
 costs = []
 start = time.perf_counter()
-op = ort.SessionOptions()
-if enable_profiling:
-    op.enable_profiling = True
 
-op.intra_op_num_threads = threads
-ses = ort.InferenceSession(mode_path, sess_options=op, providers=['CPUExecutionProvider'])
-input_name = ses.get_inputs()[0].name
+skmodel: DecisionTreeRegressor = joblib.load(mode_path)
+# TODO mutli-thread
 
 times = 5
 for _ in range(times):
     start0 = time.perf_counter()
-    pred = ses.run([output], {input_name: X})[0]
+    pred = skmodel.predict(X)
     end0 = time.perf_counter()
     costs.append(end0 - start0)
 
-if enable_profiling:
-    ses.end_profiling()
 end = time.perf_counter()
 
 costs.sort()
@@ -69,5 +59,5 @@ else:
     print(f'pred: {pred.sum()}')
 print(f'cost: {cost}')
 
-with open('result.csv', 'a', encoding='utf-8') as f:
+with open('result_sklearn.csv', 'a', encoding='utf-8') as f:
     f.write(f'{model},{pruned},{args.predicate},{data},{scale},{threads},{cost}\n')

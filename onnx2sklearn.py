@@ -12,19 +12,19 @@ import joblib
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', '-m', type=str, default='Ailerons_d10_l703_n1405_20240915180213')
-parser.add_argument('--step', '-s', type=int, default=0)
+parser.add_argument('--pruned', type=int, default=1)
 args = parser.parse_args()
 
 model_name = args.model
-if args.step == 0:
-    sufix = '_out'
-elif args.step == 1:
-    sufix = '_out2'
+if args.pruned == 1:
+    suffix = '_out'
+elif args.pruned == 2:
+    suffix = '_out2'
 else:
-    raise ValueError('Invalid step')
+    raise ValueError('Invalid pruned')
 
 sklearn_path = f'model/{model_name}.joblib'
-onnx_path = f'model_output/{model_name}{sufix}.onnx'
+onnx_path = f'model_output/{model_name}{suffix}.onnx'
 output_path = onnx_path.replace('.onnx', '.joblib')
 same_tree = onnx_path[:-5] == sklearn_path[:-7]
 
