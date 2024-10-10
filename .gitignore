@@ -9,3 +9,7 @@ __pycache__/
 *.onnx
 branch_test.csv*
 branch_test2.csv*
+build/
+core.*
+*.so
+*.c

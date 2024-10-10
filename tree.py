@@ -247,6 +247,11 @@ def model2tree(input_model, samples_list: 'List[int] | None', node_id, parent: '
 
     return node
 
+def preorder(node: 'Node', nodes: List['Node']):
+    nodes.append(node)
+    if node.mode != b'LEAF':
+        preorder(node.left, nodes)
+        preorder(node.right, nodes)
 
 #############
 # Test code #
