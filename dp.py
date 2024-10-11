@@ -5,7 +5,7 @@ from typing import List, Tuple
 import argparse
 from tree import Node, TreeEnsembleRegressor, model2tree
 
-# dp_v1: original version
+# TODO: dp_v4: first merge, then dp
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', '-m', type=str, default='Ailerons_d10_l703_n1405_20240915180213')
@@ -102,11 +102,12 @@ class SubTreeForDP:
                     branch_samples = left.branch_samples + right.branch_samples
                     
                     flag = 2
-                    if left.flag == right.flag and left.flag != 2:
-                        flag = left.flag
-                    else:
-                        branch_samples += left.node_samples + right.node_samples
-                    
+                    # if left.flag == right.flag and left.flag != 2:
+                    #     flag = left.flag
+                    # else:
+                    #     branch_samples += left.node_samples + right.node_samples
+                    branch_samples += left.node_samples + right.node_samples
+
                     if dp_arr[i][j] is None or branch_samples < dp_arr[i][j].branch_samples:
                         dp_arr[i][j] = DPNode(
                             (i, j),
@@ -200,9 +201,9 @@ start = time.perf_counter()
 root = model2tree(model, samples_list, 0, None)
 
 # TODO: 取消训练集上模型自带的权重
-root.replace_samples()
-samples_list = []
-root.get_samples_list(samples_list)
+# root.replace_samples()
+# samples_list = []
+# root.get_samples_list(samples_list)
 
 sub_roots: List[Tuple['Node', int]] = []
 reduced_cost = 0
@@ -224,6 +225,8 @@ for sub_root, count in sub_roots:
 
     print(f'cost: {sub_root.same_feature_branch_samples()}, {subtree.root.same_feature_branch_samples()}, {subtree.dp_arr[0][count].branch_samples}')
     reduced_cost += sub_root.same_feature_branch_samples() - subtree.dp_arr[0][count].branch_samples
+
+root.check_samples()
 
 regressor = TreeEnsembleRegressor.from_tree(root)
 output_model = regressor.to_model(model)

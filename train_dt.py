@@ -27,12 +27,13 @@ data_path = f'data/{data}.csv'
 df = pd.read_csv(data_path)
 data_count = min(data_count, df.shape[0])
 print(f'data_count: {data_count}')
-df = df.sample(n=data_count, random_state=42)
+# TODO
+# df = df.sample(n=data_count, random_state=42)
 
 X = df.drop(columns=[label])
 y = df[label]
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.001, random_state=42)
 
 X_train = X_train.values
 X_test = X_test.values

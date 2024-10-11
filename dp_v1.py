@@ -200,9 +200,9 @@ start = time.perf_counter()
 root = model2tree(model, samples_list, 0, None)
 
 # TODO: 取消训练集上模型自带的权重
-root.replace_samples()
-samples_list = []
-root.get_samples_list(samples_list)
+# root.replace_samples()
+# samples_list = []
+# root.get_samples_list(samples_list)
 
 sub_roots: List[Tuple['Node', int]] = []
 reduced_cost = 0

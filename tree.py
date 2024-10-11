@@ -73,6 +73,14 @@ class Node:
             self.left.get_samples_list(samples_list)
             self.right.get_samples_list(samples_list)
 
+    def check_samples(self):
+        if self.mode != b'LEAF':
+            legal = (self.left.samples + self.right.samples == self.samples)
+            if not legal:
+                raise ValueError(f'samples not match: {self.left.samples} + {self.right.samples} != {self.samples}')
+            self.left.check_samples() 
+            self.right.check_samples()
+
 class TreeEnsembleRegressor:
     def __init__(self):
         self.n_targets: int = 1
