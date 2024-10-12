@@ -81,6 +81,20 @@ class Node:
             self.left.check_samples() 
             self.right.check_samples()
 
+    def max_depth_to_leaf(self) -> int:
+        if self.mode == b'LEAF':
+            return 0
+
+        return 1 + max(self.left.max_depth_to_leaf(), self.right.max_depth_to_leaf())
+    
+    def tosql(self, features: List[str]) -> str:
+        sql = ''
+        if self.mode == b'LEAF':
+            sql += f'{self.target_weight:.6f}'
+        else:
+            sql += f'CASE WHEN {features[self.feature_id]} <= {self.value:.6f} THEN {self.left.tosql(features)} ELSE {self.right.tosql(features)} END'
+        return sql
+
 class TreeEnsembleRegressor:
     def __init__(self):
         self.n_targets: int = 1
