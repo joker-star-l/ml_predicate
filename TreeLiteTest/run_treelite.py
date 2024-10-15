@@ -1,7 +1,6 @@
 import numpy as np
 import time
 import argparse
-from sklearn.tree import DecisionTreeRegressor
 import joblib
 import treelite
 import tl2cgen
@@ -11,7 +10,7 @@ import tl2cgen
 parser = argparse.ArgumentParser()
 parser.add_argument('--threads', '-t', type=int, default=1)
 parser.add_argument('--pruned', type=int, default=0)
-parser.add_argument('--data', '-d', type=str,default='nyc-taxi-green-dec-2016')
+parser.add_argument('--data', '-d', type=str, default='nyc-taxi-green-dec-2016')
 parser.add_argument('--scale', '-s', type=str, default='1G')
 parser.add_argument('--model', '-m', type=str)
 parser.add_argument('--predicate', '-p', type=float)
