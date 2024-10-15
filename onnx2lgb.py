@@ -4,10 +4,12 @@ import time
 import pandas as pd
 from utils import get_attribute
 from typing import List, Dict
+import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', '-m', type=str, default='nyc-taxi-green-dec-2016_d10_l859_n1717_20241015054511')
 parser.add_argument('--pruned', type=int, default=1)
+parser.add_argument('--genc', action='store_true')
 args = parser.parse_args()
 
 model_name = args.model
@@ -85,11 +87,17 @@ def onnx2lgb(input_model: onnx.ModelProto, n_features: int) -> str:
     left_child_list: List[int] = []
     right_child_list: List[int] = []
     leaf_value_list: List[float] = []
+    leaf_count_list: List[int] = []
+    internal_count_list: List[int] = []
 
     inner_id = 0
     leaf_id = -1
     id_map: Dict[int, int] = {}
     for i, id_ in enumerate(input_nodes_nodeids):
+         # only for debug
+        if i != id_:
+            raise ValueError(f'Invalid node id {i} != {id_}')
+
         if input_node_modes[i] == b'BRANCH_LEQ':
             id_map[id_] = inner_id
             inner_id += 1
@@ -107,15 +115,17 @@ def onnx2lgb(input_model: onnx.ModelProto, n_features: int) -> str:
     if inner_id + 1 != abs(leaf_id) - 1:
         raise ValueError(f'Invalid inner_id {inner_id} or leaf_id {leaf_id}')
 
-    for i, id_ in enumerate(input_nodes_nodeids):
+    for i, _ in enumerate(input_nodes_nodeids):
         if input_node_modes[i] == b'BRANCH_LEQ':
             split_feature_list.append(input_nodes_featureids[i])
             threshold_list.append(input_nodes_values[i])
             decision_type_list.append(2)
             left_child_list.append(id_map[input_nodes_truenodeids[i]])
             right_child_list.append(id_map[input_nodes_falsenodeids[i]])
+            internal_count_list.append(int(input_nodes_hitrates[i]))
         elif input_node_modes[i] == b'LEAF':
-            leaf_value_list.append(input_target_weights[abs(id_map[id_]) - 1])
+            leaf_value_list.append(input_target_weights[abs(id_map[i]) - 1])
+            leaf_count_list.append(int(input_nodes_hitrates[i]))
         else:
             raise ValueError('Invalid node mode')
     
@@ -132,6 +142,11 @@ def onnx2lgb(input_model: onnx.ModelProto, n_features: int) -> str:
     s += f'left_child={" ".join([f"{e}" for e in left_child_list])}\n'
     s += f'right_child={" ".join([f"{e}" for e in right_child_list])}\n'
     s += f'leaf_value={" ".join([f"{e}" for e in leaf_value_list])}\n'
+
+    # data_count to generate likely or unlikely c++ code
+    s += f'leaf_count={" ".join([f"{e}" for e in leaf_count_list])}\n'
+    s += f'internal_count={" ".join([f"{e}" for e in internal_count_list])}\n'
+
     s += '\n\n'
     s += 'end of trees\n'
     s += '\n'
@@ -152,3 +167,17 @@ with open(lgb_path, 'w', encoding='utf-8') as f:
 end = time.perf_counter()
 
 print(f'Running time: {end - start} Seconds')
+
+if args.genc:
+    import treelite as tl
+    import tl2cgen
+
+    cxx_path = f'{prefix}{model_name}{suffix}/'
+    libso_path = f'{prefix}{model_name}{suffix}.so'
+
+    tlmodel = tl.frontend.load_lightgbm_model(lgb_path)
+    tl2cgen.generate_c_code(tlmodel, dirpath=cxx_path, params={})
+    start = time.perf_counter()
+    tl2cgen.export_lib(tlmodel, toolchain='gcc', libpath=libso_path, params={})
+    end = time.perf_counter()
+    print(f'Compile cost: {end - start} Seconds')

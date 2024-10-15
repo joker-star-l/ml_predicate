@@ -24,7 +24,7 @@ while [ "$#" -gt 0 ]; do
         -dc|--data_count) train_data_count=$2; shift 2;;
         -s|--scale) scale=$2; shift 2;;
         -t|--threads) threads=$2; shift 2;;
-        -b|--backend) backend=$2; shift 2;; # onnxruntime, sklearn, sql_duckdb, lleaves
+        -b|--backend) backend=$2; shift 2;; # onnxruntime, sklearn, sql_duckdb, lleaves, treelite
         *) echo "Unknown parameter passed: $1"; exit 1;;
     esac
 done
@@ -100,6 +100,23 @@ elif [ "$backend" = "lleaves" ]; then
 
         python run_lleaves.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 1
         python run_lleaves.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 2
+        
+        # break
+    done < ./model/model_leaf_range.txt
+
+elif [ "$backend" = "treelite" ]; then
+    python onnx2lgb.py -m $model_name --pruned 0 --genc
+    python run_treelite.py -d $data -s $scale -m $model_name -p 0 -t $threads
+
+    while read predicate
+    do
+        python pruning.py -m $model_name -p $predicate
+        python onnx2lgb.py -m $model_name --pruned 1 --genc
+        python dp.py -m $model_name
+        python onnx2lgb.py -m $model_name --pruned 2 --genc
+
+        python run_treelite.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 1
+        python run_treelite.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 2
         
         # break
     done < ./model/model_leaf_range.txt
