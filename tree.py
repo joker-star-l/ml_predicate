@@ -92,7 +92,10 @@ class Node:
         if self.mode == b'LEAF':
             sql += f'{self.target_weight:.6f}'
         else:
-            sql += f'CASE WHEN {features[self.feature_id]} <= {self.value:.6f} THEN {self.left.tosql(features)} ELSE {self.right.tosql(features)} END'
+            if self.left.samples > self.right.samples:
+                sql += f'CASE WHEN {features[self.feature_id]} <= {self.value:.6f} THEN {self.left.tosql(features)} ELSE {self.right.tosql(features)} END'
+            else:
+                sql += f'CASE WHEN {features[self.feature_id]} > {self.value:.6f} THEN {self.right.tosql(features)} ELSE {self.left.tosql(features)} END'
         return sql
 
 class TreeEnsembleRegressor:
@@ -274,6 +277,16 @@ def preorder(node: 'Node', nodes: List['Node']):
     if node.mode != b'LEAF':
         preorder(node.left, nodes)
         preorder(node.right, nodes)
+
+def samplesorder(node: 'Node', nodes: List['Node']):
+    nodes.append(node)
+    if node.mode != b'LEAF':
+        if node.left.samples >= node.right.samples:
+            samplesorder(node.left, nodes)
+            samplesorder(node.right, nodes)
+        else:
+            samplesorder(node.right, nodes)
+            samplesorder(node.left, nodes)
 
 #############
 # Test code #

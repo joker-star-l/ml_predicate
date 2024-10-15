@@ -24,7 +24,7 @@ while [ "$#" -gt 0 ]; do
         -dc|--data_count) train_data_count=$2; shift 2;;
         -s|--scale) scale=$2; shift 2;;
         -t|--threads) threads=$2; shift 2;;
-        -b|--backend) backend=$2; shift 2;; # onnxruntime, sklearn
+        -b|--backend) backend=$2; shift 2;; # onnxruntime, sklearn, sql_duckdb, lleaves
         *) echo "Unknown parameter passed: $1"; exit 1;;
     esac
 done
@@ -66,6 +66,40 @@ elif [ "$backend" = "sklearn" ]; then
 
         python run_sklearn.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 1
         python run_sklearn.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 2
+        
+        # break
+    done < ./model/model_leaf_range.txt
+
+elif [ "$backend" = "sql_duckdb" ]; then
+    python onnx2sql.py -m $model_name --pruned 0
+    python run_sql_duckdb.py -d $data -s $scale -m $model_name -p 0 -t $threads
+
+    while read predicate
+    do
+        python pruning.py -m $model_name -p $predicate
+        python onnx2sql.py -m $model_name --pruned 1
+        python dp.py -m $model_name
+        python onnx2sql.py -m $model_name --pruned 2
+
+        python run_sql_duckdb.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 1
+        python run_sql_duckdb.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 2
+        
+        # break
+    done < ./model/model_leaf_range.txt
+
+elif [ "$backend" = "lleaves" ]; then
+    python onnx2lgb.py -m $model_name --pruned 0
+    python run_lleaves.py -d $data -s $scale -m $model_name -p 0 -t $threads
+
+    while read predicate
+    do
+        python pruning.py -m $model_name -p $predicate
+        python onnx2lgb.py -m $model_name --pruned 1
+        python dp.py -m $model_name
+        python onnx2lgb.py -m $model_name --pruned 2
+
+        python run_lleaves.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 1
+        python run_lleaves.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 2
         
         # break
     done < ./model/model_leaf_range.txt

@@ -92,17 +92,22 @@ def onnx2sklearn(input_model: onnx.ModelProto, model: DecisionTreeRegressor):
 
     root = model2tree(input_model, None, 0, None)
     nodes: List[Node] = []
-    preorder(root, nodes)
-    
+    # preorder(root, nodes)
+    samplesorder(root, nodes)
+
     # only for debug
+    # for (i, node) in enumerate(nodes):
+    #     if i != node.id:
+    #         raise ValueError(f'node id not match: {i} != {node.id}')
+
+    id2idx = {}
     for (i, node) in enumerate(nodes):
-        if i != node.id:
-            raise ValueError(f'node id not match: {i} != {node.id}')
+        id2idx[node.id] = i
 
     sknodes = np.ndarray(shape=node_count, dtype=skutils.Node)
     for (i, node) in enumerate(nodes):
         sknodes[i] = skutils.Node(
-            _tree.TREE_UNDEFINED if node.parent is None else node.parent.id,
+            _tree.TREE_UNDEFINED if node.parent is None else id2idx[node.parent.id],
             node.parent is not None and node.parent.left == node,
             node.mode == b'LEAF',
             node.feature_id,
