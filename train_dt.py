@@ -21,7 +21,7 @@ args = parser.parse_args()
 data = args.data
 tree_depth = args.tree_depth
 data_count = args.data_count
-label =args.label
+label = args.label
 
 data_path = f'data/{data}.csv'
 df = pd.read_csv(data_path)

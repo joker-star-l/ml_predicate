@@ -5,10 +5,10 @@ from typing import List, Tuple
 import argparse
 from tree import Node, TreeEnsembleRegressor, model2tree
 
-# dp_v1: original version
+# dp_v3: remove dp, only merge. although calls dp, no dp here!!!
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', '-m', type=str, default='Ailerons_d10_l703_n1405_20240915180213')
+parser.add_argument('--model', '-m', type=str, default='house_16H_d10_l280_n559_20241009120728')
 args = parser.parse_args()
 
 model_name = args.model
@@ -19,211 +19,121 @@ samples_list_path = f'model_output/{model_name}_out_node_samples.csv'
 model = onnx.load(model_path)
 samples_list = pd.read_csv(samples_list_path)['node_samples'].tolist()
 
-class DPNode:
-    def __init__(self, idx, k, node_samples, branch_samples, threshold, flag, node):
-        self.idx: Tuple[int, int] = idx  # 索引
-        self.k: int = k  # 分割点
-        self.node_samples: int = node_samples  # 节点样本数
-        self.branch_samples: int = branch_samples  # 节点及其分支样本总数，即dp_value
-        self.threshold: float = threshold  # 阈值
-        self.flag: int = flag  # 标志 0: False; 1: True; 2: Both;
-
-        self.node: 'Node | None' = node  # 新的真实节点
-    
-    @staticmethod
-    def get_flag_from_node(node: 'Node') -> int:
-        if node.mode != b'LEAF':
-            return 2
-        return int(node.target_weight)
-    
-    @staticmethod
-    def show(dp_arr: List[List['DPNode | None']]):
-        DPNode.show_internal(dp_arr, 0, len(dp_arr) - 1)
-        print()
-
-    @staticmethod
-    def show_internal(dp_arr: List[List['DPNode | None']], i: int, j: int):
-        if i == j:
-            print(f'A{dp_arr[i][i].flag}', end='')
-        else:
-            print('(', end='')
-            DPNode.show_internal(dp_arr, i, dp_arr[i][j].k)
-            DPNode.show_internal(dp_arr, dp_arr[i][j].k + 1, j)
-            print(')', end='')
-
-class SubTreeForDP:
-    def __init__(self, root, count):
-        self.root: 'Node' = root
-        self.feature_id: int = self.root.feature_id
-        self.parent: 'Node' | None = self.root.parent
-        self.count: int = count
-
-        self.ordered_internal_nodes: List['Node'] = []
-        self.ordered_leaf_nodes: List['Node'] = []
-        SubTreeForDP.init_nodes(root, self.feature_id, self.ordered_internal_nodes, self.ordered_leaf_nodes)
-
-        # only for debug
-        if len(self.ordered_internal_nodes) != count or len(self.ordered_leaf_nodes) != count + 1:
-            raise ValueError('Count not match')
-
-        self.dp_arr: List[List['DPNode | None']] = None
-
-    @staticmethod
-    def init_nodes(node: 'Node', feature_id: int, ordered_internal_nodes: 'List[Node]', ordered_leaf_nodes: 'List[Node]'):
-        # 左根右遍历，保证阈值从小到大排列
-        if node.mode != b'LEAF' and node.feature_id == feature_id:
-            SubTreeForDP.init_nodes(node.left, feature_id, ordered_internal_nodes, ordered_leaf_nodes)
-            ordered_internal_nodes.append(node)
-            SubTreeForDP.init_nodes(node.right, feature_id, ordered_internal_nodes, ordered_leaf_nodes)
-        else:
-            ordered_leaf_nodes.append(node)
-
-    def dp(self):
-        n = self.count + 1
-        dp_arr: List[List['DPNode | None']] = [[None for _ in range(n)] for _ in range(n)]
-        for i in range(n):
-            node = self.ordered_leaf_nodes[i]
-            dp_arr[i][i] = DPNode(
-                (i, i),
-                i,
-                node.samples,
-                node.samples,
-                node.value,
-                DPNode.get_flag_from_node(node),
-                node
-            )
-        for l in range(2, n + 1):  # l: length
-            for i in range(n - l + 1):
-                j = i + l - 1
-                dp_arr[i][j] = None
-                for k in range(i, j):
-                    left = dp_arr[i][k]
-                    right = dp_arr[k + 1][j]
-                    branch_samples = left.branch_samples + right.branch_samples
-                    
-                    flag = 2
-                    if left.flag == right.flag and left.flag != 2:
-                        flag = left.flag
-                    else:
-                        branch_samples += left.node_samples + right.node_samples
-                    
-                    if dp_arr[i][j] is None or branch_samples < dp_arr[i][j].branch_samples:
-                        dp_arr[i][j] = DPNode(
-                            (i, j),
-                            k,
-                            left.node_samples + right.node_samples,
-                            branch_samples,
-                            self.ordered_internal_nodes[k].value,
-                            flag,
-                            None
-                        )
-        self.dp_arr = dp_arr
-
-    def change_nodes(self):
-        new_root = self.change_nodes_internal(0, self.count).node
-        new_root.parent = self.parent
-        if self.parent is not None:
-            if self.parent.left == self.root:
-                self.parent.left = new_root
-            else:
-                self.parent.right = new_root
-        self.root = new_root
-
-    def change_nodes_internal(self, i: int, j: int) -> 'DPNode':
-        dp_node = self.dp_arr[i][j]
-
-        # 叶子节点
-        if i == j:
-            return dp_node
-
-        # dp之前是非叶子节点，需要判断dp之后是否是非叶子节点
-        node_mode = b'BRANCH_LEQ' if dp_node.flag == 2 else b'LEAF'
-
-        if node_mode != b'LEAF':
-            dp_left = self.change_nodes_internal(i, dp_node.k)
-            dp_right = self.change_nodes_internal(dp_node.k + 1, j)
-
-        old_node = self.ordered_internal_nodes[dp_node.k]
-        
-        # only for debug
-        if old_node.value != dp_node.threshold:
-            raise ValueError('threshold not match')
-
-        new_node = Node(
-            old_node.id,
-            old_node.feature_id,
-            node_mode,
-            0 if node_mode == b'LEAF' else old_node.value,
-            None,
-            float(dp_node.flag) if node_mode == b'LEAF' else None,
-            dp_node.node_samples,
-        )
-
-        if node_mode != b'LEAF':
-            # only for debug
-            if dp_left is None or dp_right is None:
-                raise ValueError('dp_left or dp_right is None')
-
-            new_node.left = dp_left.node
-            dp_left.node.parent = new_node
-
-            new_node.right = dp_right.node
-            dp_right.node.parent = new_node
-
-        dp_node.node = new_node
-
-        return dp_node
-
-def get_same_feature_subtrees(node: 'Node', sub_roots: List[Tuple['Node', int]]) -> int:
+def get_leaf_nodes(node: 'Node', depth: int, leaf_nodes: List[Tuple['Node', int]]):
+    # 左根右
+    depth += 1
     if node.mode == b'LEAF':
-        return 0
-
-    # 非叶子节点
-    count = 1 + get_same_feature_subtrees(node.left, sub_roots) + get_same_feature_subtrees(node.right, sub_roots)
-    if node.parent is not None and node.parent.feature_id == node.feature_id:
-        return count
+        leaf_nodes.append((node, depth))
     else:
-        if count > 1:
-            sub_roots.append((node, count))
+        get_leaf_nodes(node.left, depth, leaf_nodes)
+        get_leaf_nodes(node.right, depth, leaf_nodes)
 
-            # only for debug: get depth
-            depth = 0
-            p_node = node
-            while p_node.parent is not None:
-                depth += 1
-                p_node = p_node.parent
-            print(f'feature: {node.feature_id}, subtree_root_depth: {depth}, count: {count}')
+def get_can_merge_nodes(leaf_nodes: List[Tuple['Node', int]]) -> List[List[Tuple['Node', int]]]:
+    # the inner list has three elements: common parent, node1 (shorter to parent), node2 (longer to parent)
+    merge_nodes_list: List[List[Tuple['Node', int]]] = []
+    
+    i = 0
+    for i in range(len(leaf_nodes) - 1):
+        l1 = leaf_nodes[i]
+        l2 = leaf_nodes[i + 1]
 
-        return 0
+        if l1[0].target_weight != l2[0].target_weight:
+            continue
+
+        p1 = (l1[0].parent, l1[1] - 1)
+        p2 = (l2[0].parent, l2[1] - 1)
+
+        feature_id = p1[0].feature_id
+        d1 = 1
+        d2 = 1
+        while p1[0] != p2[0]:
+            if feature_id != p1[0].feature_id or feature_id != p2[0].feature_id:
+                # cannot merge
+                break
+
+            if p1[1] > p2[1]:
+                p1 = (p1[0].parent, p1[1] - 1)
+                d1 += 1
+            elif p2[1] > p1[1]:
+                p2 = (p2[0].parent, p2[1] - 1)
+                d2 += 1
+            else:
+                p1 = (p1[0].parent, p1[1] - 1)
+                d1 += 1
+                p2 = (p2[0].parent, p2[1] - 1)
+                d2 += 1
+
+        if p1[0] == p2[0] and feature_id == p1[0].feature_id:
+            print(f'can merge: {i} {i + 1}, n_nodes: {2 * len(leaf_nodes) - 1}')
+
+            if d1 <= d2:
+                merge_nodes_list.append([p1, (l1[0], d1), (l2[0], d2)])
+            else:
+                merge_nodes_list.append([p1, (l2[0], d2), (l1[0], d1)])
+
+    return merge_nodes_list
+
+def merge(nodes: List[Tuple['Node', int]]) -> int:
+    reduced_cost = 0
+    
+    common_parent = nodes[0][0]
+
+    # the longer path node
+    node = nodes[2][0]
+    parent = node.parent
+    reduced_cost += node.samples + parent.samples
+
+    print('common_parent.value', common_parent.value, 'shorter_node_parent.value', nodes[1][0].parent.value, 'longer_node_parent.value', nodes[2][0].parent.value)
+
+    # change common parent node threshold
+    common_parent.value = parent.value
+    print('common_parent.value_', common_parent.value)
+
+    if parent.left == node:
+        another = parent.right
+        parent.right = None
+    else:
+        another = parent.left
+        parent.left = None
+
+    # change parent.parent to another, parent.parent always not null
+    if parent.parent.left == parent:
+        parent.parent.left = another
+    else:
+        parent.parent.right = another
+    another.parent = parent.parent
+    parent.parent = None
+
+    # change longer path node samples
+    parent = another.parent
+    merge_samples = node.samples
+    while parent != common_parent:
+        parent.samples -= merge_samples
+        parent = parent.parent
+
+        reduced_cost += merge_samples
+
+    # change shorter path node samples
+    node = nodes[1][0]
+    while node != common_parent:
+        node.samples += merge_samples
+        node = node.parent
+
+        reduced_cost -= merge_samples
+
+    return reduced_cost
 
 start = time.perf_counter()
 root = model2tree(model, samples_list, 0, None)
 
-# TODO: 取消训练集上模型自带的权重
-# root.replace_samples()
-# samples_list = []
-# root.get_samples_list(samples_list)
+leaf_nodes: List[Tuple['Node', int]] = []
+get_leaf_nodes(root, 0, leaf_nodes)
+merge_nodes_list = get_can_merge_nodes(leaf_nodes)
+merge_nodes_list.sort(key=lambda x: x[0][1], reverse=True)
 
-sub_roots: List[Tuple['Node', int]] = []
 reduced_cost = 0
-get_same_feature_subtrees(root, sub_roots)
-
-for sub_root, count in sub_roots:
-    subtree = SubTreeForDP(sub_root, count)
-    subtree.dp()
-    subtree.change_nodes()
-    DPNode.show(subtree.dp_arr)
-
-    # change root
-    if sub_root.parent is None:
-        root = subtree.root
-
-    # only for debug
-    if subtree.root.same_feature_branch_samples() != subtree.dp_arr[0][count].branch_samples:
-        raise ValueError('Branch samples not match')
-
-    print(f'cost: {sub_root.same_feature_branch_samples()}, {subtree.root.same_feature_branch_samples()}, {subtree.dp_arr[0][count].branch_samples}')
-    reduced_cost += sub_root.same_feature_branch_samples() - subtree.dp_arr[0][count].branch_samples
+for merge_nodes in merge_nodes_list:
+    reduced_cost += merge(merge_nodes)
 
 regressor = TreeEnsembleRegressor.from_tree(root)
 output_model = regressor.to_model(model)
@@ -239,5 +149,13 @@ print(f'Reduced cost: {reduced_cost}')
 # only for debug
 if root.branch_samples() + reduced_cost != sum(samples_list):
     raise ValueError('Branch samples not match')
+
+# only for debug
+def debug_samples(root: 'Node') :
+    if root.mode != b'LEAF':
+        if root.samples != debug_samples(root.left) + debug_samples(root.right):
+            raise ValueError('Samples not match')
+    return root.samples
+debug_samples(root)
 
 print(f'Performance: {sum(samples_list) / (sum(samples_list) - reduced_cost)}')

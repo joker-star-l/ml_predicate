@@ -10,14 +10,16 @@
 # ./generate_and_run_single_model.sh -td 10 -dc 10000 -s 1G -t 1 -d nyc-taxi-green-dec-2016 -l tipamount -b sklearn
 # ./generate_and_run_single_model.sh -td 10 -dc 10000 -s 1G -t 1 -d Ailerons -l goal -b sklearn
 
-# ./generate_and_run_single_model.sh -td 10 -dc 10000 -s 1G -t 2 -d house_16H -l price -b sklearn
-# ./generate_and_run_single_model.sh -td 10 -dc 10000 -s 1G -t 2 -d nyc-taxi-green-dec-2016 -l tipamount -b sql_duckdb
-# ./generate_and_run_single_model.sh -td 10 -dc 10000 -s 1G -t 2 -d Ailerons -l goal -b sklearn
+# ./generate_and_run_single_model.sh -td 10 -dc 10000 -s 1G -t 1 -d house_16H -l price -b sklearn
+# ./generate_and_run_single_model.sh -td 10 -dc 10000 -s 1G -t 1 -d nyc-taxi-green-dec-2016 -l tipamount -b sql_duckdb
+# ./generate_and_run_single_model.sh -td 10 -dc 10000 -s 1G -t 1 -d Ailerons -l goal -b sklearn
 
 # ./generate_and_run_single_model.sh -td 10 -dc 10000 -s 10G -t 1 -d house_16H -l price -b lleaves
-# ./generate_and_run_single_model.sh -td 10 -dc 10000 -s 10G -t 1 -d nyc-taxi-green-dec-2016 -l tipamount -b lleaves
+# ./generate_and_run_single_model.sh -td 10 -dc 10000 -s 1G -t 1 -d nyc-taxi-green-dec-2016 -l tipamount -b lleaves
 # ./generate_and_run_single_model.sh -td 10 -dc 10000 -s 10G -t 1 -d Ailerons -l goal -b lleaves
 
 # ./generate_and_run_single_model.sh -td 10 -dc 10000 -s 1G -t 1 -d house_16H -l price -b treelite
-./generate_and_run_single_model.sh -td 10 -dc 10000 -s 1G -t 1 -d nyc-taxi-green-dec-2016 -l tipamount -b treelite
+# ./generate_and_run_single_model.sh -td 10 -dc 10000 -s 1G -t 1 -d nyc-taxi-green-dec-2016 -l tipamount -b treelite
 # ./generate_and_run_single_model.sh -td 10 -dc 10000 -s 1G -t 1 -d Ailerons -l goal -b treelite
+
+./generate_and_run_single_model_clf.sh -td 3 -dc 10000 -s 1G -t 1 -d bank-marketing -l Class -b onnxruntime

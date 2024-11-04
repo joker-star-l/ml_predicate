@@ -1,9 +1,13 @@
 import pandas as pd
 import numpy as np
 
-data = 'Ailerons'
-scale_1G = 450
-y_label = 'goal'
+# data = 'Ailerons'
+# scale_1G = 450
+# y_label = 'goal'
+
+data = 'bank-marketing'
+scale_1G = 3700
+y_label = 'Class'
 
 # TO 1G
 data_path = f'./data/{data}.csv'

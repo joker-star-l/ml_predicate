@@ -10,6 +10,7 @@ from utils import get_attribute
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', '-m', type=str)
 parser.add_argument('--predicate', '-p', type=float)
+parser.add_argument('--clf2reg', action='store_true')
 args = parser.parse_args()
 
 # 回归树node attributes
@@ -48,9 +49,17 @@ args = parser.parse_args()
 # nodes_values: 阈值，叶子节点的值为0
 # post_transform
 
+if args.clf2reg:
+    model_path = f'model_output/{args.model}_reg'
+else:
+    model_path = f'model/{args.model}'
 
-model_path = f'model/{args.model}'
-func = lambda x: x > args.predicate
+out_path = f'model_output/{args.model}_out'
+
+if args.clf2reg:
+    func = lambda x: x == args.predicate
+else:
+    func = lambda x: x > args.predicate
 
 
 def pruning(node_id, depth, result_nodes, onnx_model, joblib_model, f) -> int:  # 0: leaf_false, 1: leaf_true, 2: inner
@@ -112,8 +121,7 @@ pruning(0, 0, result_nodes, model, None, func)
 removed_count = result_nodes.count('REMOVED')
 print("total nodes:", len(result_nodes), "removed nodes:", removed_count, removed_count / len(result_nodes))
 
-model_joblib = joblib.load(model_path + '.joblib')
-node_cost_weights = model_joblib.tree_.n_node_samples
+node_cost_weights = [int(i) for i in get_attribute(model, 'nodes_hitrates').floats]
 # print(node_cost_weights)
 reduced_cost_weights = sum([node_cost_weights[i] for i, node in enumerate(result_nodes) if node == 'REMOVED'])
 print("total cost:", sum(node_cost_weights), "reduced cost:", reduced_cost_weights, f"performance: {sum(node_cost_weights) / (sum(node_cost_weights) - reduced_cost_weights)}x")
@@ -413,7 +421,7 @@ def reg2reg(input_model, removed_nodes):
 output_model = reg2reg(model, result_nodes)
 # print(output_model)
 
-onnx.save_model(output_model, model_path.replace('model/', 'model_output/') + '_out.onnx')
+onnx.save_model(output_model, out_path + '.onnx')
 
 node_samples = []
 for i, stat in enumerate(result_nodes):
@@ -426,4 +434,4 @@ for i, f in enumerate(get_attribute(output_model, "nodes_hitrates").floats):
         raise Exception(f"node_samples[{i}] != int(f), {node_samples[i]} != {int(f)}")
 
 df = pd.DataFrame(node_samples, columns=['node_samples'])
-df.to_csv(model_path.replace('model/', 'model_output/') + '_out_node_samples.csv', index=True)
+df.to_csv(out_path + '_node_samples.csv', index=True)
