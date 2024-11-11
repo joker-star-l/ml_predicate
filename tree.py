@@ -87,16 +87,43 @@ class Node:
 
         return 1 + max(self.left.max_depth_to_leaf(), self.right.max_depth_to_leaf())
     
-    def tosql(self, features: List[str]) -> str:
+    def tosql_v1(self, features: List[str]) -> str:
         sql = ''
         if self.mode == b'LEAF':
             sql += f'{self.target_weight:.6f}'
         else:
             if self.left.samples > self.right.samples:
-                sql += f'CASE WHEN {features[self.feature_id]} <= {self.value:.6f} THEN {self.left.tosql(features)} ELSE {self.right.tosql(features)} END'
+                sql += f'CASE WHEN {features[self.feature_id]} <= {self.value:.6f} THEN {self.left.tosql_v1(features)} ELSE {self.right.tosql_v1(features)} END'
             else:
-                sql += f'CASE WHEN {features[self.feature_id]} > {self.value:.6f} THEN {self.right.tosql(features)} ELSE {self.left.tosql(features)} END'
+                sql += f'CASE WHEN {features[self.feature_id]} > {self.value:.6f} THEN {self.right.tosql_v1(features)} ELSE {self.left.tosql_v1(features)} END'
         return sql
+
+    def tosql(self, features: List[str]) -> str:
+        if self.mode == b'LEAF':
+            return f'{self.target_weight}'
+
+        sql = ''
+        if self.mode != b'LEAF':
+            sql_l = self.left.tosql(features)
+            if sql_l == '1':
+                sql = f'{features[self.feature_id]} <= {self.value:.6f}'
+            elif sql_l not in ['', '0']:
+                sql = f'{features[self.feature_id]} <= {self.value:.6f} AND ({sql_l})'
+
+            sql_r = self.right.tosql(features)
+            if sql_r == '1':
+                if sql != '':
+                    sql = f'({sql}) OR {features[self.feature_id]} > {self.value:.6f}'
+                else:
+                    sql = f'{features[self.feature_id]} > {self.value:.6f}'
+            elif sql_r not in ['', '0']:
+                if sql != '':
+                    sql = f'({sql}) OR ({features[self.feature_id]} > {self.value:.6f} AND ({sql_r}))'
+                else:
+                    sql = f'{features[self.feature_id]} > {self.value:.6f} AND ({sql_r})'
+
+            return sql
+
 
 class TreeEnsembleRegressor:
     def __init__(self):

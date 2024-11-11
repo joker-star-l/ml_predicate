@@ -31,7 +31,7 @@ sql_path = f'{prefix}{model_name}{suffix}.sql'
 
 def onnx2sql(input_model: onnx.ModelProto, features: List[str]) -> str:
     root = model2tree(input_model, None, 0, None)
-    return root.tosql(features)
+    return root.tosql_v1(features)
 
 model = onnx.load(onnx_path)
 features = pd.read_csv(featues_path)['features'].tolist()

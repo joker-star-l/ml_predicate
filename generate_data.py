@@ -5,9 +5,25 @@ import numpy as np
 # scale_1G = 450
 # y_label = 'goal'
 
-data = 'bank-marketing'
-scale_1G = 3700
-y_label = 'Class'
+# data = 'bank-marketing'
+# scale_1G = 3700
+# y_label = 'Class'
+
+# data = 'california'
+# scale_1G = 623
+# y_label = 'price_above_median'
+
+# data = 'electricity'
+# scale_1G = 449
+# y_label = 'class'
+
+# data = 'credit'
+# scale_1G = 1403
+# y_label = 'SeriousDlqin2yrs'
+
+data = 'NASA'
+scale_1G = 180
+y_label = 'hazardous'
 
 # TO 1G
 data_path = f'./data/{data}.csv'
