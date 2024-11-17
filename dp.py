@@ -1,14 +1,19 @@
 import onnx
 import time
 import pandas as pd
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 import argparse
 from tree import Node, TreeEnsembleRegressor, model2tree
+import sys
 
-# dp_v3: remove dp, only merge. although calls dp, no dp here!!!
+# dp_v6: remove dp, only merge (more general scenarios). although calls dp, no dp here!!!
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', '-m', type=str, default='house_16H_d10_l280_n559_20241009120728')
+# test case: nyc-taxi-green-dec-2016_d10_l481_n961_20241010111047
+# test case: house_16H_d5_l24_n47_20241108023539
+# test case: bank-marketing_d10_l407_n813_20241106042040
+# test case: NASA_d10_l264_n527_20241106064301
+parser.add_argument('--model', '-m', type=str, default='Ailerons_d10_l818_n1635_20241112182051')
 args = parser.parse_args()
 
 model_name = args.model
@@ -19,121 +24,163 @@ samples_list_path = f'model_output/{model_name}_out_node_samples.csv'
 model = onnx.load(model_path)
 samples_list = pd.read_csv(samples_list_path)['node_samples'].tolist()
 
-def get_leaf_nodes(node: 'Node', depth: int, leaf_nodes: List[Tuple['Node', int]]):
-    # 左根右
-    depth += 1
-    if node.mode == b'LEAF':
-        leaf_nodes.append((node, depth))
-    else:
-        get_leaf_nodes(node.left, depth, leaf_nodes)
-        get_leaf_nodes(node.right, depth, leaf_nodes)
+# each not-leaf node except the end node in the chain has one leaf child, and these leaf children have a same target.
+# the end node has a leaf child which also has the same target.
+class MergeChain:
+    def __init__(self, start_node: Node, end_node: Node, value: int):
+        self.start_node = start_node
+        self.end_node = end_node
+        self.value = value
 
-def get_can_merge_nodes(leaf_nodes: List[Tuple['Node', int]]) -> List[List[Tuple['Node', int]]]:
-    # the inner list has three elements: common parent, node1 (shorter to parent), node2 (longer to parent)
-    merge_nodes_list: List[List[Tuple['Node', int]]] = []
-    
-    i = 0
-    for i in range(len(leaf_nodes) - 1):
-        l1 = leaf_nodes[i]
-        l2 = leaf_nodes[i + 1]
+    def left_leaf_value(self, node: Node):
+        return node.left.mode == b'LEAF' and int(node.left.target_weight) == self.value
 
-        if l1[0].target_weight != l2[0].target_weight:
-            continue
+    def has_same_feature(self):
+        features = set()
+        node = self.end_node
+        while node != self.start_node.parent:
+            if node.feature_id in features:
+                return True
+            features.add(node.feature_id)
+            node = node.parent
+        return False
 
-        p1 = (l1[0].parent, l1[1] - 1)
-        p2 = (l2[0].parent, l2[1] - 1)
+    def merge(self):
+        # key: (feature_id, left_leaf_value)
+        node_map: Dict[Tuple[int, int], Node] = {}
+        node = self.start_node
+        while True:
+            feature_id = node.feature_id
+            left_leaf_value = self.left_leaf_value(node)
+            ancestor_node = node_map.get((feature_id, left_leaf_value))
+            if ancestor_node is None:  # not in the chain
+                node_map[(feature_id, left_leaf_value)] = node
+            else:  # merge the node to the ancestor node
+                ancestor_node.value = node.value
 
-        feature_id = p1[0].feature_id
-        d1 = 1
-        d2 = 1
-        while p1[0] != p2[0]:
-            if feature_id != p1[0].feature_id or feature_id != p2[0].feature_id:
-                # cannot merge
+                parent = node.parent
+                if left_leaf_value:
+                    ancestor_node.left.samples += node.left.samples
+
+                    if parent.left == node:
+                        parent.left = node.right
+                    else:
+                        parent.right = node.right
+                    node.right.parent = parent
+                else:
+                    ancestor_node.right.samples += node.right.samples
+
+                    if parent.left == node:
+                        parent.left = node.left
+                    else:
+                        parent.right = node.left
+                    node.left.parent = parent
+
+                if node == self.end_node:
+                    self.end_node = parent
+                    break
+
+            if node == self.end_node:
                 break
-
-            if p1[1] > p2[1]:
-                p1 = (p1[0].parent, p1[1] - 1)
-                d1 += 1
-            elif p2[1] > p1[1]:
-                p2 = (p2[0].parent, p2[1] - 1)
-                d2 += 1
+            if left_leaf_value:
+                node = node.right
             else:
-                p1 = (p1[0].parent, p1[1] - 1)
-                d1 += 1
-                p2 = (p2[0].parent, p2[1] - 1)
-                d2 += 1
-
-        if p1[0] == p2[0] and feature_id == p1[0].feature_id:
-            print(f'can merge: {i} {i + 1}, n_nodes: {2 * len(leaf_nodes) - 1}')
-
-            if d1 <= d2:
-                merge_nodes_list.append([p1, (l1[0], d1), (l2[0], d2)])
-            else:
-                merge_nodes_list.append([p1, (l2[0], d2), (l1[0], d1)])
-
-    return merge_nodes_list
-
-def merge(nodes: List[Tuple['Node', int]]) -> int:
-    reduced_cost = 0
+                node = node.left
+        
+        self.update_samples()
     
-    common_parent = nodes[0][0]
+    def update_samples(self):
+        node = self.end_node
+        while True:
+            node.samples = node.left.samples + node.right.samples
+            if node == self.start_node:
+                break
+            node = node.parent
 
-    # the longer path node
-    node = nodes[2][0]
-    parent = node.parent
-    reduced_cost += node.samples + parent.samples
+    def print(self):
+        ret = ''
+        node = self.end_node
+        while node != self.start_node.parent:
+            s = f'{MergeChain.node_str(node.left)}, {MergeChain.node_str(node.right)}'
+            ret = f'{s}\n{ret}'
+            node = node.parent
+        ret = f'{MergeChain.node_str(self.start_node)}\n{ret}'
 
-    print('common_parent.value', common_parent.value, 'shorter_node_parent.value', nodes[1][0].parent.value, 'longer_node_parent.value', nodes[2][0].parent.value)
+        print(ret)
+    
+    @staticmethod
+    def node_str(node: Node):
+        if node.mode == b'LEAF':
+            return f'[LEAF: {int(node.target_weight)}]'
+        return f'[x{node.feature_id} <= {node.value:.6f}]'
+    
+def find_merge_chains(node: Node, merge_chains: List[MergeChain]):
+    end_node, chain_value = find_merge_chains_(node, merge_chains)
+    if chain_value in [0, 1]:
+        merge_chains.append(MergeChain(node, end_node, chain_value))
 
-    # change common parent node threshold
-    common_parent.value = parent.value
-    print('common_parent.value_', common_parent.value)
+def find_merge_chains_(node: Node, merge_chains: List[MergeChain]) -> Tuple[Node | None, int]:
+    # chain_value:
+    #  0 (0): node has 1 leaf child, and the target is 0
+    #  1 (1): node has 1 leaf child, and the target is 1
+    #  2 (0 or 1): node has 2 leaf children
+    #  3 (0 and 1): node has 0 leaf child
+    # return: chain_end_node, chain_value
 
-    if parent.left == node:
-        another = parent.right
-        parent.right = None
-    else:
-        another = parent.left
-        parent.left = None
+    if node.left.mode == b'LEAF' and node.right.mode == b'LEAF':
+        return node, 2
 
-    # change parent.parent to another, parent.parent always not null
-    if parent.parent.left == parent:
-        parent.parent.left = another
-    else:
-        parent.parent.right = another
-    another.parent = parent.parent
-    parent.parent = None
+    if node.left.mode == b'LEAF':
+        chain_value = int(node.left.target_weight)
+        end_node, right_chain_value = find_merge_chains_(node.right, merge_chains)
 
-    # change longer path node samples
-    parent = another.parent
-    merge_samples = node.samples
-    while parent != common_parent:
-        parent.samples -= merge_samples
-        parent = parent.parent
+        if right_chain_value == 2:  # 2 (0 or 1)
+            return end_node, chain_value
 
-        reduced_cost += merge_samples
+        if right_chain_value == chain_value:  # 0 (0), 1 (1)
+            return end_node, chain_value
 
-    # change shorter path node samples
-    node = nodes[1][0]
-    while node != common_parent:
-        node.samples += merge_samples
-        node = node.parent
+        # 3 (0 and 1)
+        return node, chain_value
 
-        reduced_cost -= merge_samples
+    if node.right.mode == b'LEAF':
+        chain_value = int(node.right.target_weight)
+        end_node, left_chain_value = find_merge_chains_(node.left, merge_chains)
 
-    return reduced_cost
+        if left_chain_value == 2:  # 2 (0 or 1)
+            return end_node, chain_value
+
+        if left_chain_value == chain_value:  # 0 (0), 1 (1)
+            return end_node, chain_value
+
+        # 3 (0 and 1)
+        return node, chain_value
+
+    left_end_node, left_chain_value = find_merge_chains_(node.left, merge_chains)
+    if left_chain_value in [0, 1] and left_end_node != node.left:
+        merge_chains.append(MergeChain(node.left, left_end_node, left_chain_value))
+
+    right_end_node, right_chain_value = find_merge_chains_(node.right, merge_chains)
+    if right_chain_value in [0, 1] and right_end_node != node.right:
+        merge_chains.append(MergeChain(node.right, right_end_node, right_chain_value))
+
+    return None, 3
 
 start = time.perf_counter()
 root = model2tree(model, samples_list, 0, None)
 
-leaf_nodes: List[Tuple['Node', int]] = []
-get_leaf_nodes(root, 0, leaf_nodes)
-merge_nodes_list = get_can_merge_nodes(leaf_nodes)
-merge_nodes_list.sort(key=lambda x: x[0][1], reverse=True)
-
 reduced_cost = 0
-for merge_nodes in merge_nodes_list:
-    reduced_cost += merge(merge_nodes)
+
+merge_chains: List[MergeChain] = []
+find_merge_chains(root, merge_chains)
+for i, merge_chain in enumerate(merge_chains):
+    if merge_chain.has_same_feature():
+        print(i)
+        merge_chain.print()
+        reduced_cost += merge_chain.start_node.branch_samples()
+        merge_chain.merge()
+        merge_chain.print()
+        reduced_cost -= merge_chain.start_node.branch_samples()
 
 regressor = TreeEnsembleRegressor.from_tree(root)
 output_model = regressor.to_model(model)

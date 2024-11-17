@@ -11,8 +11,8 @@ import argparse
 import joblib
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', '-m', type=str, default='Ailerons_d10_l703_n1405_20240915180213')
-parser.add_argument('--pruned', type=int, default=1)
+parser.add_argument('--model', '-m', type=str, default='Ailerons_d10_l818_n1635_20241112182051')
+parser.add_argument('--pruned', type=int, default=2)
 args = parser.parse_args()
 
 model_name = args.model
