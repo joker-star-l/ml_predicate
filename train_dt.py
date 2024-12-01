@@ -73,10 +73,21 @@ bucket_num = 10
 with open('model/model_leaf_range.txt', 'w', encoding='utf-8') as f:
     leaves = list(set(get_attribute(model_onnx, 'target_weights').floats))
     leaves.sort()
-    second_min_leaf = leaves[1]
-    second_max_leaf = leaves[-2]
-    bucket_size = (second_max_leaf - second_min_leaf) / bucket_num
-    print('second_min_leaf:', second_min_leaf, 'second_max_leaf:', second_max_leaf, 'bucket_size:', bucket_size)
-    for i in range(bucket_num):
-        second_min_leaf += bucket_size
-        f.write(str(round(second_min_leaf, 6)) + '\n')
+
+    # # 等宽直方图
+    # second_min_leaf = leaves[1]
+    # second_max_leaf = leaves[-2]
+    # bucket_size = (second_max_leaf - second_min_leaf) / bucket_num
+    # print('second_min_leaf:', second_min_leaf, 'second_max_leaf:', second_max_leaf, 'bucket_size:', bucket_size)
+    # for i in range(bucket_num):
+    #     second_min_leaf += bucket_size
+    #     f.write(str(round(second_min_leaf, 6)) + '\n')
+
+    # 等高直方图
+    bucket_size = len(leaves) / 100
+    print('bucket_size:', bucket_size)
+    for i in range(1, 5 + 1):
+        f.write(str(round(leaves[int(i * bucket_size)], 6)) + '\n')
+    for i in range(95, 99 + 1):
+        f.write(str(round(leaves[int(i * bucket_size)], 6)) + '\n')
+

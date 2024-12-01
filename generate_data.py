@@ -21,9 +21,13 @@ import numpy as np
 # scale_1G = 1403
 # y_label = 'SeriousDlqin2yrs'
 
-data = 'NASA'
-scale_1G = 180
-y_label = 'hazardous'
+# data = 'NASA'
+# scale_1G = 180
+# y_label = 'hazardous'
+
+data = 'medical_charges'
+scale_1G = 230
+y_label = 'AverageTotalPayments'
 
 # TO 1G
 data_path = f'./data/{data}.csv'
