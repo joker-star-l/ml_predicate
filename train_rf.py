@@ -8,36 +8,34 @@ import datetime
 from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType
 import argparse
+from typing import Dict, List
+import statistics
 
 from utils import get_attribute
 
 parser = argparse.ArgumentParser()
 
-# parser.add_argument('--data', '-d', type=str,  default='nyc-taxi-green-dec-2016')
-# parser.add_argument('--tree_depth', '-td', type=int, default=10)
-# parser.add_argument('--data_count', '-dc', type=int, default=10000)
-# parser.add_argument('--label', '-l', type=str, default='tipamount')
+parser.add_argument('--tree_depth', '-td', type=int, default=2)
+parser.add_argument('--tree_count', '-tc', type=int, default=3)
+parser.add_argument('--data_count', '-dc', type=int, default=10000)
+
+parser.add_argument('--data', '-d', type=str,  default='nyc-taxi-green-dec-2016')
+parser.add_argument('--label', '-l', type=str, default='tipamount')
 
 # parser.add_argument('--data', '-d', type=str,  default='house_16H')
-# parser.add_argument('--tree_depth', '-td', type=int, default=10)
-# parser.add_argument('--data_count', '-dc', type=int, default=10000)
 # parser.add_argument('--label', '-l', type=str, default='price')
 
 # parser.add_argument('--data', '-d', type=str,  default='Ailerons')
-# parser.add_argument('--tree_depth', '-td', type=int, default=10)
-# parser.add_argument('--data_count', '-dc', type=int, default=10000)
 # parser.add_argument('--label', '-l', type=str, default='goal')
 
-parser.add_argument('--data', '-d', type=str,  default='medical_charges')
-parser.add_argument('--tree_depth', '-td', type=int, default=10)
-parser.add_argument('--data_count', '-dc', type=int, default=10000)
-parser.add_argument('--label', '-l', type=str, default='AverageTotalPayments')
+# parser.add_argument('--data', '-d', type=str,  default='medical_charges')
+# parser.add_argument('--label', '-l', type=str, default='AverageTotalPayments')
 
 args = parser.parse_args()
 
 data = args.data
 tree_depth = args.tree_depth
-tree_count = 100
+tree_count = args.tree_count
 data_count = args.data_count
 label = args.label
 
@@ -73,38 +71,56 @@ print('nodes:', node_count)
 
 now = datetime.datetime.now()
 now = now.strftime('%Y%m%d%H%M%S')
-model_name = f'{data}_d{sum(depth)//tree_count}_l{sum(leaves)//tree_count}_n{sum(node_count)//tree_count}_{now}'
+model_name = f'{data}_t{tree_count}_d{sum(depth)//tree_count}_l{sum(leaves)//tree_count}_n{sum(node_count)//tree_count}_{now}'
 joblib_path = f'rf_model/{model_name}.joblib'
 onnx_path = f'rf_model/{model_name}.onnx'
 
 joblib.dump(model, joblib_path)
-# model_onnx = convert_sklearn(model, initial_types=[('float_input', FloatTensorType([None, X_train.shape[1]]))])
-# nodes_hitrates = get_attribute(model_onnx, 'nodes_hitrates').floats
-# for i in range(len(nodes_hitrates)):
-#     nodes_hitrates[i] = model.tree_.n_node_samples[i]
-# onnx.save_model(model_onnx, onnx_path)
+model_onnx = convert_sklearn(model, initial_types=[('float_input', FloatTensorType([None, X_train.shape[1]]))])
+nodes_hitrates = get_attribute(model_onnx, 'nodes_hitrates').floats
+i = 0
+for tree in model.estimators_:
+    for j in range(tree.tree_.node_count):
+        nodes_hitrates[i] = tree.tree_.n_node_samples[j]
+        i += 1
+onnx.save_model(model_onnx, onnx_path)
 
-# with open('model/model_name.txt', 'w', encoding='utf-8') as f:
-#     f.write(f'{model_name}\n')
+with open('rf_model/model_name.txt', 'w', encoding='utf-8') as f:
+    f.write(f'{model_name}\n')
 
-# bucket_num = 10
-# with open('model/model_leaf_range.txt', 'w', encoding='utf-8') as f:
-#     leaves = list(set(get_attribute(model_onnx, 'target_weights').floats))
-#     leaves.sort()
+bucket_num = 10
+with open('rf_model/model_leaf_range.txt', 'w', encoding='utf-8') as f:
+    target_treeids = get_attribute(model_onnx, 'target_treeids').ints
+    # IMPORTANT: sklearn 转到 onnx 时, 预测值会除以 tree_count 作为 target_weights
+    target_weights = get_attribute(model_onnx, 'target_weights').floats
 
-#     # # 等宽直方图
-#     # second_min_leaf = leaves[1]
-#     # second_max_leaf = leaves[-2]
-#     # bucket_size = (second_max_leaf - second_min_leaf) / bucket_num
-#     # print('second_min_leaf:', second_min_leaf, 'second_max_leaf:', second_max_leaf, 'bucket_size:', bucket_size)
-#     # for i in range(bucket_num):
-#     #     second_min_leaf += bucket_size
-#     #     f.write(str(round(second_min_leaf, 6)) + '\n')
+    leaves_map: Dict[int, list] = {}
+    for (i, id) in enumerate(target_treeids):
+        if id not in leaves_map:
+            leaves_map[id] = []
+        leaves_map[id].append(target_weights[i])
 
-#     # 等高直方图
-#     bucket_size = len(leaves) / 100
-#     print('bucket_size:', bucket_size)
-#     for i in range(1, 5 + 1):
-#         f.write(str(round(leaves[int(i * bucket_size)], 6)) + '\n')
-#     for i in range(95, 99 + 1):
-#         f.write(str(round(leaves[int(i * bucket_size)], 6)) + '\n')
+    # 等高直方图
+    p1_5: List[list] = [[], [], [], [], []]
+    p95_99: List[list] = [[], [], [], [], []]
+    
+    for id in leaves_map.keys():
+        leaves_map[id] = list(set(leaves_map[id]))
+        leaves_map[id].sort()
+        leaves = leaves_map[id]
+
+        bucket_size = len(leaves) / 100
+        print('tree:', id, 'bucket_size:', bucket_size)
+    
+        for i in range(1, 5 + 1):
+            p1_5[i-1].append(leaves[int(i * bucket_size)])
+        for i in range(95, 99 + 1):
+            p95_99[i-95].append(leaves[int(i * bucket_size)])
+
+    # print('p1_5:', p1_5)
+    # print('p95_99:', p95_99)
+
+    for p in p1_5:
+        f.write(str(round(statistics.mean(p), 6)) + '\n')
+    for p in p95_99:
+        f.write(str(round(statistics.mean(p), 6)) + '\n')
