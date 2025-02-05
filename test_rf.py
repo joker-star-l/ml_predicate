@@ -26,7 +26,7 @@ predicates = [i * 0.01 for i in range(0, 360)]
 
 model_path = f'rf_model/{model}.joblib'
 data_path = f'data/{data}.csv'
-output_path = f'rf_model_output/{model}.csv'
+output_path = f'rf_model_acc_output/{model}.csv'
 with open(output_path, 'w', encoding='utf-8') as f:
     f.write('type,index,predicate,value\n')
 
@@ -94,7 +94,7 @@ for i, f in enumerate(functions):
 # draw
 import matplotlib.pyplot as plt
 
-result_file = f'rf_model_output/{model}.csv'
+result_file = f'rf_model_acc_output/{model}.csv'
 
 df = pd.read_csv(result_file)
 dt_rf = df[df['type'] == 'dt_rf']
@@ -113,4 +113,4 @@ plt.xlabel('$\\theta$ (prediction > $\\theta$)')
 plt.legend()
 # plt.ylim(0)
 
-plt.savefig(f'rf_model_output/{model}.png')
+plt.savefig(f'rf_model_acc_output/{model}.png')

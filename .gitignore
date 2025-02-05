@@ -4,6 +4,7 @@ model_clf/
 data/
 model_output/
 rf_model_output/
+rf_model_acc_output/
 onnxruntime_profile*
 chore.txt
 log*
