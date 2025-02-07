@@ -4,9 +4,12 @@ from onnx import helper
 import onnx.checker
 import argparse
 import pandas as pd
+import time
 from typing import List, Tuple
 
 from utils import get_attribute
+
+start__ = time.time()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', '-m', type=str, default='nyc-taxi-green-dec-2016_t3_d2_l4_n7_20250204160726')
@@ -65,7 +68,7 @@ else:
     func = lambda x, n: x > args.predicate / n
 
 
-def pruning(tree_no, tree_interval, node_id, depth, result_nodes, onnx_model, f) -> int:  # 0: leaf_false, 1: leaf_true, 2: inner
+def pruning(tree_no, tree_interval, node_id, depth, result_nodes, onnx_model, f, tree_count) -> int:  # 0: leaf_false, 1: leaf_true, 2: inner
     tree_start = tree_interval[0]
     tree_end = tree_interval[1]
 
@@ -87,7 +90,7 @@ def pruning(tree_no, tree_interval, node_id, depth, result_nodes, onnx_model, f)
                 target_idx = ti
                 break
 
-        result = int(f(target_weights[target_idx]))
+        result = int(f(target_weights[target_idx], tree_count))
         result_nodes[node_id] = 'LEAF_TRUE' if result == 1 else 'LEAF_FALSE'
 
         # print(f'node_id: {node_id}, depth: {depth}, is_leaf: {is_leaf}, result: {result}')
@@ -96,9 +99,9 @@ def pruning(tree_no, tree_interval, node_id, depth, result_nodes, onnx_model, f)
 
     if not is_leaf:
         left_node_id = left_nodes[node_id]
-        left_result = pruning(tree_no, tree_interval, left_node_id, depth + 1, result_nodes, onnx_model, f)
+        left_result = pruning(tree_no, tree_interval, left_node_id, depth + 1, result_nodes, onnx_model, f, tree_count)
         right_node_id = right_nodes[node_id]
-        right_result = pruning(tree_no, tree_interval, right_node_id, depth + 1, result_nodes, onnx_model, f)
+        right_result = pruning(tree_no, tree_interval, right_node_id, depth + 1, result_nodes, onnx_model, f, tree_count)
 
         if left_result == 0 and right_result == 0:
             # print(f'node_id: {node_id}, depth: {depth}, is_leaf: {is_leaf}, result: {0}')
@@ -154,10 +157,9 @@ all_node_cost_weights = 0
 all_reduced_cost_weights = 0
 node_cost_weights_list = []
 
-ff = lambda x: func(x, len(tree_intervals))
 for tree_no, result_nodes in enumerate(result_nodes_list):
     tree_interval = tree_intervals[tree_no]
-    pruning(tree_no, tree_interval, 0, 0, result_nodes, model, ff)
+    pruning(tree_no, tree_interval, 0, 0, result_nodes, model, func, len(tree_intervals))
 
     # only for debug
     # print(result_nodes)
@@ -320,7 +322,7 @@ def reg2reg(input_model, removed_nodes_list: List[List[str]], tree_intervals: Li
     # # target_weights: 叶子节点的权重，即预测值
     target_weights = []
     for new_ids in new_ids_list:
-        tree_target_weights = [float(int(new_id[1] == 'LEAF_TRUE')) for new_id in new_ids if (new_id[1] == 'LEAF_FALSE' or new_id[1] == 'LEAF_TRUE')]
+        tree_target_weights = [int(new_id[1] == 'LEAF_TRUE') / len(tree_intervals) for new_id in new_ids if (new_id[1] == 'LEAF_FALSE' or new_id[1] == 'LEAF_TRUE')]
         target_weights.extend(tree_target_weights)
 
     # node
@@ -392,3 +394,7 @@ for i, f in enumerate(get_attribute(output_model, "nodes_hitrates").floats):
 # only for debug
 df = pd.DataFrame(node_samples, columns=['node_samples'])
 df.to_csv(out_path + '_node_samples.csv', index=True)
+
+end__ = time.time()
+
+print("time: ", end__ - start__)

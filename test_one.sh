@@ -1,8 +1,17 @@
-model_name="Ailerons_d10_l818_n1635_20241118082414"
-predicate="-0.00026"
-data="Ailerons"
+model_name="nyc-taxi-green-dec-2016_t100_d10_l836_n1671_20250205174051"
+predicate="1.275"
+data="nyc-taxi-green-dec-2016"
 scale="1G"
-threads=1
+threads=48
+
+# model_name="nyc-taxi-green-dec-2016_t3_d2_l4_n7_20250204160726"
+# predicate="1.275"
+# data="nyc-taxi-green-dec-2016"
+# scale="1G"
+# threads=1
+
+python run_onnx_rf.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 0
+python run_onnx_rf.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 1
 
 # python pruning.py -m $model_name -p $predicate
 # python onnx2sklearn.py -m $model_name --pruned 1

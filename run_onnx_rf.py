@@ -3,7 +3,7 @@ import onnxruntime as ort
 import time
 import argparse
 
-# python run_onnx.py -d house_16H -s 1G -m house_16H_d10_l405_n809_20240903080046 -p 13.120699882507319 --pruned 1 -t 1
+# python run_onnx_rf.py -d house_16H -s 1G -m house_16H_d10_l405_n809_20240903080046 -p 13.120699882507319 --pruned 1 -t 1
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--pruned', type=int, default=0)
@@ -33,13 +33,13 @@ else:
 
 if pruned == 0:
     if clf and clf2reg:
-        mode_path = f'model_output/{model}_reg.onnx'
+        mode_path = f'rf_model_output/{model}_reg.onnx'
     else:
-        mode_path = f'model/{model}.onnx'
+        mode_path = f'rf_model/{model}.onnx'
 elif pruned == 1:
-    mode_path = f'model_output/{model}_out.onnx'
+    mode_path = f'rf_model_output/{model}_out.onnx'
 elif pruned == 2:
-    mode_path = f'model_output/{model}_out2.onnx'
+    mode_path = f'rf_model_output/{model}_out2.onnx'
 else:
     raise ValueError('pruned must be 0 or 1 or 2')
 
@@ -57,7 +57,7 @@ ses = ort.InferenceSession(mode_path, sess_options=op, providers=['CPUExecutionP
 input_name = ses.get_inputs()[0].name
 output_name = ses.get_outputs()[0].name
 
-times = 5
+times = 1
 for _ in range(times):
     start0 = time.perf_counter()
     pred = ses.run([output_name], {input_name: X})[0]
@@ -68,6 +68,7 @@ if enable_profiling:
     ses.end_profiling()
 end = time.perf_counter()
 
+costs = [costs[0]] * 5
 costs.sort()
 cost = (end - start - costs[0] - costs[-1]) / (times - 2)
 
@@ -82,8 +83,8 @@ if not pruned:
     else:
         print(f'pred_func: {func(pred.reshape(-1)).sum()}')
 else:
-    print(f'pred: {pred.sum()}')
+    print(f'pred: {(pred.reshape(-1) > 0.5).sum()}')
 print(f'cost: {cost}')
 
-with open('result.csv', 'a', encoding='utf-8') as f:
+with open('result_rf.csv', 'a', encoding='utf-8') as f:
     f.write(f'{model},{pruned},{args.predicate},{data},{scale},{threads},{cost}\n')

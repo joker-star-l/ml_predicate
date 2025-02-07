@@ -1,0 +1,5 @@
+model,pruned,predicate,data,scale,threads,time
+nyc-taxi-green-dec-2016_t3_d2_l4_n7_20250204160726,0,1.275,nyc-taxi-green-dec-2016,1G,1,1.9901358392089605
+nyc-taxi-green-dec-2016_t3_d2_l4_n7_20250204160726,1,1.275,nyc-taxi-green-dec-2016,1G,1,1.79528056550771
+nyc-taxi-green-dec-2016_t100_d10_l836_n1671_20250205174051,0,1.275,nyc-taxi-green-dec-2016,1G,48,25.281369383446872
+nyc-taxi-green-dec-2016_t100_d10_l836_n1671_20250205174051,1,1.275,nyc-taxi-green-dec-2016,1G,48,24.69018334709108
