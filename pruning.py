@@ -4,12 +4,15 @@ from onnx import helper
 import onnx.checker
 import argparse
 import pandas as pd
+import time
 
 from utils import get_attribute
 
+start = time.time()
+
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', '-m', type=str)
-parser.add_argument('--predicate', '-p', type=float)
+parser.add_argument('--model', '-m', type=str, default='nyc-taxi-green-dec-2016_d10_l861_n1721_20241128145703')
+parser.add_argument('--predicate', '-p', type=float, default=1.275)
 parser.add_argument('--clf2reg', action='store_true')
 args = parser.parse_args()
 
@@ -435,3 +438,7 @@ for i, f in enumerate(get_attribute(output_model, "nodes_hitrates").floats):
 
 df = pd.DataFrame(node_samples, columns=['node_samples'])
 df.to_csv(out_path + '_node_samples.csv', index=True)
+
+end = time.time()
+
+print("time: ", end - start)
