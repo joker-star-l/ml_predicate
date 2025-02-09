@@ -49,10 +49,6 @@ model = DecisionTreeClassifier(max_depth=tree_depth)
 model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
 
-data_path = f'data/{data}.csv'
-df = pd.read_csv(data_path)
-df = df.head(data_count)
-
 print(f'classification_report: {classification_report(y_test, y_pred)}')
 
 depth = model.get_depth()
