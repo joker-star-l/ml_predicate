@@ -53,7 +53,6 @@ args = parser.parse_args()
 # nodes_values: 阈值，叶子节点的值为0
 # post_transform
 
-# TODO 随即森林分类器
 
 if args.clf2reg:
     model_path = f'rf_model_output/{args.model}_reg'
@@ -63,7 +62,7 @@ else:
 out_path = f'rf_model_output/{args.model}_out'
 
 if args.clf2reg:
-    func = lambda x, n: x == args.predicate
+    func = lambda x, n: int(x) == int(args.predicate)
 else:
     func = lambda x, n: x > args.predicate / n
 

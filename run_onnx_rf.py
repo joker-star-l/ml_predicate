@@ -81,7 +81,7 @@ if not pruned:
     if clf and not clf2reg:
         print(f'pred_func: {func(pred).sum()}')
     else:
-        print(f'pred_func: {func(pred.reshape(-1)).sum()}')
+        print(f'pred_func: {func(pred.reshape(-1)).sum()}') # meaningless if tree count > 1
 else:
     print(f'pred: {(pred.reshape(-1) > 0.5).sum()}')
 print(f'cost: {cost}')

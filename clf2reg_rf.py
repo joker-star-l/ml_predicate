@@ -9,11 +9,11 @@ import numpy as np
 from utils import get_attribute
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', '-m', type=str, default='bank-marketing_d3_l8_n15_20241104075020')
+parser.add_argument('--model', '-m', type=str, default='bank-marketing_t3_d2_l4_n7_20250209151527')
 args = parser.parse_args()
 
-model_path = f'model/{args.model}'
-out_path = f'model_output/{args.model}_reg'
+model_path = f'rf_model/{args.model}'
+out_path = f'rf_model_output/{args.model}_reg'
 
 def clf2reg(input_model: onnx.ModelProto) -> onnx.ModelProto:
     # input model attributes
@@ -47,6 +47,8 @@ def clf2reg(input_model: onnx.ModelProto) -> onnx.ModelProto:
     input_nodes_values = get_attribute(input_model, 'nodes_values').floats
     # # post_transform
     input_post_transform = get_attribute(input_model, 'post_transform').s
+
+    n_trees = len(set(input_class_treeids))
 
     # output model attributes
     # # n_targets
@@ -107,7 +109,7 @@ def clf2reg(input_model: onnx.ModelProto) -> onnx.ModelProto:
     target_weights = []
     if stride == 1:
         # binary mode: only store positive class weight
-        target_weights = [1.0 if w > 0.5 else 0.0 for w in input_class_weights]
+        target_weights = [1.0 if w > 0.5 / n_trees else 0.0 for w in input_class_weights]
     else:
         for i in range(n_leaf):
             targets = input_class_weights[i * stride: (i + 1) * stride]
