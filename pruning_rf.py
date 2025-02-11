@@ -8,6 +8,7 @@ import time
 from typing import List, Tuple
 
 from utils import get_attribute
+from tree import get_tree_intervals
 
 start__ = time.time()
 
@@ -122,26 +123,6 @@ def pruning(tree_no, tree_interval, node_id, depth, result_nodes, onnx_model, f,
 
 model = onnx.load(model_path + '.onnx')
 # print(model)
-
-# 获取每棵树在数组中的区间, 左闭右开
-def get_tree_intervals(onnx_model) -> List[Tuple[int, int]]:
-    tree_roots: List[int] = []
-    # nodes_treeids is ordered
-    nodes_treeids = get_attribute(onnx_model, 'nodes_treeids').ints
-    next_tree_id = 0
-    for i, tree_id in enumerate(nodes_treeids):
-        if tree_id == next_tree_id:
-            next_tree_id += 1
-            tree_roots.append(i)
-
-    tree_intervals: List[Tuple[int, int]] = []
-    for i, root in enumerate(tree_roots):
-        if i == len(tree_roots) - 1:
-            end = len(nodes_treeids)
-        else:
-            end = tree_roots[i + 1]
-        tree_intervals.append((root, end))
-    return tree_intervals
 
 tree_intervals = get_tree_intervals(model)
 

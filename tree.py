@@ -1,7 +1,7 @@
 import onnx
 from onnx import helper
 from utils import get_attribute
-from typing import List
+from typing import List, Tuple
 
 class Node:
     def __init__(
@@ -188,11 +188,33 @@ class TreeEnsembleRegressor:
         onnx.checker.check_model(output_model)
 
         return output_model
+    
+    @staticmethod
+    def from_trees(roots: List[Node]) -> 'TreeEnsembleRegressor':
+        regressors = [TreeEnsembleRegressor.from_tree(root, tree_no) for tree_no, root in enumerate(roots)]
+        regressor = TreeEnsembleRegressor()
+
+        for r in regressors:
+            regressor.nodes_falsenodeids.extend(r.nodes_falsenodeids)
+            regressor.nodes_featureids.extend(r.nodes_featureids)
+            regressor.nodes_hitrates.extend(r.nodes_hitrates)
+            regressor.nodes_missing_value_tracks_true.extend(r.nodes_missing_value_tracks_true)
+            regressor.nodes_modes.extend(r.nodes_modes)
+            regressor.nodes_nodeids.extend(r.nodes_nodeids)
+            regressor.nodes_treeids.extend(r.nodes_treeids)
+            regressor.nodes_truenodeids.extend(r.nodes_truenodeids)
+            regressor.nodes_values.extend(r.nodes_values)
+            regressor.target_ids.extend(r.target_ids)
+            regressor.target_nodeids.extend(r.target_nodeids)
+            regressor.target_treeids.extend(r.target_treeids)
+            regressor.target_weights.extend(r.target_weights)
+
+        return regressor
 
     @staticmethod
-    def from_tree(root: 'Node') -> 'TreeEnsembleRegressor':
+    def from_tree(root: 'Node', tree_no: int) -> 'TreeEnsembleRegressor':
         regressor = TreeEnsembleRegressor()
-        TreeEnsembleRegressor.from_tree_internal(regressor, root)
+        TreeEnsembleRegressor.from_tree_internal(regressor, root, tree_no)
         
         id_map = {old_id: i for i, old_id in enumerate(regressor.nodes_nodeids)}
         # print(id_map)
@@ -205,7 +227,7 @@ class TreeEnsembleRegressor:
         return regressor
 
     @staticmethod
-    def from_tree_internal(regressor: 'TreeEnsembleRegressor', node: 'Node'):
+    def from_tree_internal(regressor: 'TreeEnsembleRegressor', node: 'Node', tree_no: int = 0):
         is_leaf = node.mode == b'LEAF'
 
         regressor.nodes_falsenodeids.append(node.right.id if not is_leaf else 0)
@@ -214,52 +236,70 @@ class TreeEnsembleRegressor:
         regressor.nodes_missing_value_tracks_true.append(0)
         regressor.nodes_modes.append(node.mode)
         regressor.nodes_nodeids.append(node.id)
-        regressor.nodes_treeids.append(0)
+        regressor.nodes_treeids.append(tree_no)
         regressor.nodes_truenodeids.append(node.left.id if not is_leaf else 0)
         regressor.nodes_values.append(node.value)
         
         if is_leaf:
             regressor.target_ids.append(0)
             regressor.target_nodeids.append(node.id)
-            regressor.target_treeids.append(0)
+            regressor.target_treeids.append(tree_no)
             regressor.target_weights.append(node.target_weight)
 
         if not is_leaf:
-            TreeEnsembleRegressor.from_tree_internal(regressor, node.left)
-            TreeEnsembleRegressor.from_tree_internal(regressor, node.right)
+            TreeEnsembleRegressor.from_tree_internal(regressor, node.left, tree_no)
+            TreeEnsembleRegressor.from_tree_internal(regressor, node.right, tree_no)
 
-def model2tree(input_model, samples_list: 'List[int] | None', node_id, parent: 'Node | None') -> 'Node':
+def model2trees(input_model, samples_list: 'List[int] | None') -> 'List[Node]':
+    tree_intervals = get_tree_intervals(input_model)
+    target_tree_intervals = get_target_tree_intervals(input_model)
+    trees = []
+    for tree_no, tree_interval in enumerate(tree_intervals):
+        root = model2tree(input_model, samples_list, 0, None, tree_interval, target_tree_intervals[tree_no])
+        trees.append(root)
+    return trees
+
+def model2tree(input_model, samples_list: 'List[int] | None', node_id, parent: 'Node | None', 
+               tree_interval: 'Tuple[int, int] | None' = None, target_tree_interval: 'Tuple[int, int] | None' = None) -> 'Node':
+    if tree_interval is None:
+        tree_interval = (0, len(get_attribute(input_model, 'nodes_treeids').ints))
+    tree_start, tree_end = tree_interval
+
+    if target_tree_interval is None:
+        target_tree_interval = (0, len(get_attribute(input_model, 'target_treeids').ints))
+    target_tree_start, target_tree_end = target_tree_interval
+
     # input model attributes
     # # n_targets
     input_n_targets = get_attribute(input_model, 'n_targets').i
     # # nodes_falsenodeids: 右侧分支
-    input_nodes_falsenodeids = get_attribute(input_model, 'nodes_falsenodeids').ints
+    input_nodes_falsenodeids = get_attribute(input_model, 'nodes_falsenodeids').ints[tree_start:tree_end]
     # # nodes_featureids: 特征id
-    input_nodes_featureids = get_attribute(input_model, 'nodes_featureids').ints
+    input_nodes_featureids = get_attribute(input_model, 'nodes_featureids').ints[tree_start:tree_end]
     # # nodes_hitrates
-    input_nodes_hitrates = get_attribute(input_model, 'nodes_hitrates').floats
+    input_nodes_hitrates = get_attribute(input_model, 'nodes_hitrates').floats[tree_start:tree_end]
     # # nodes_missing_value_tracks_true
-    input_nodes_missing_value_tracks_true = get_attribute(input_model, 'nodes_missing_value_tracks_true').ints
+    input_nodes_missing_value_tracks_true = get_attribute(input_model, 'nodes_missing_value_tracks_true').ints[tree_start:tree_end]
     # # nodes_modes：节点类型，LEAF表示叶子节点，BRANCH_LEQ表示非叶子节点
-    input_node_modes = get_attribute(input_model, 'nodes_modes').strings
+    input_node_modes = get_attribute(input_model, 'nodes_modes').strings[tree_start:tree_end]
     # # nodes_nodeids
-    input_nodes_nodeids = get_attribute(input_model, 'nodes_nodeids').ints
+    input_nodes_nodeids = get_attribute(input_model, 'nodes_nodeids').ints[tree_start:tree_end]
     # # nodes_treeids
-    input_nodes_treeids = get_attribute(input_model, 'nodes_treeids').ints
+    input_nodes_treeids = get_attribute(input_model, 'nodes_treeids').ints[tree_start:tree_end]
     # # nodes_truenodeids: 左侧分支
-    input_nodes_truenodeids = get_attribute(input_model, 'nodes_truenodeids').ints
+    input_nodes_truenodeids = get_attribute(input_model, 'nodes_truenodeids').ints[tree_start:tree_end]
     # # nodes_values: 阈值，叶子节点的值为0
-    input_nodes_values = get_attribute(input_model, 'nodes_values').floats
+    input_nodes_values = get_attribute(input_model, 'nodes_values').floats[tree_start:tree_end]
     # # post_transform
     input_post_transform = get_attribute(input_model, 'post_transform').s
     # # target_ids
-    input_target_ids = get_attribute(input_model, 'target_ids').ints
+    input_target_ids = get_attribute(input_model, 'target_ids').ints[target_tree_start:target_tree_end]
     # # target_nodeids: 叶子节点的id
-    input_target_nodeids = get_attribute(input_model, 'target_nodeids').ints
+    input_target_nodeids = get_attribute(input_model, 'target_nodeids').ints[target_tree_start:target_tree_end]
     # # target_treeids
-    input_target_treeids = get_attribute(input_model, 'target_treeids').ints
+    input_target_treeids = get_attribute(input_model, 'target_treeids').ints[target_tree_start:target_tree_end]
     # # target_weights: 叶子节点的权重，即预测值
-    input_target_weights = get_attribute(input_model, 'target_weights').floats
+    input_target_weights = get_attribute(input_model, 'target_weights').floats[target_tree_start:target_tree_end]
 
     # node_id -> target_id
     input_target_nodeid_map = {node_id: i for i, node_id in enumerate(input_target_nodeids)}
@@ -273,9 +313,10 @@ def model2tree(input_model, samples_list: 'List[int] | None', node_id, parent: '
     samples = int(input_nodes_hitrates[id])
     
     # only for debug
-    if samples_list is not None:
-        if samples != samples_list[id]:
-            raise ValueError(f'samples not match: {samples} != {samples_list[id]}')
+    tree_samples_list = samples_list[tree_start:tree_end]
+    if tree_samples_list is not None:
+        if samples != tree_samples_list[id]:
+            raise ValueError(f'samples not match: {samples} != {tree_samples_list[id]}')
     
     node = Node(
         id=id,
@@ -290,11 +331,11 @@ def model2tree(input_model, samples_list: 'List[int] | None', node_id, parent: '
     
     if mode != b'LEAF':
         left_node_id = input_nodes_truenodeids[id]
-        left_node = model2tree(input_model, samples_list, left_node_id, node)
+        left_node = model2tree(input_model, samples_list, left_node_id, node, tree_interval, target_tree_interval)
         node.left = left_node
 
         right_node_id = input_nodes_falsenodeids[id]
-        right_node = model2tree(input_model, samples_list, right_node_id, node)
+        right_node = model2tree(input_model, samples_list, right_node_id, node, tree_interval, target_tree_interval)
         node.right = right_node
 
     return node
@@ -314,6 +355,46 @@ def samplesorder(node: 'Node', nodes: List['Node']):
         else:
             samplesorder(node.right, nodes)
             samplesorder(node.left, nodes)
+
+# 获取每棵树在叶子节点组成的数组中的区间, 左闭右开
+def get_target_tree_intervals(onnx_model) -> List[Tuple[int, int]]:
+    target_tree_roots: List[int] = []
+    # target_treeids is ordered
+    target_treeids = get_attribute(onnx_model, 'target_treeids').ints
+    next_tree_id = 0
+    for i, tree_id in enumerate(target_treeids):
+        if tree_id == next_tree_id:
+            next_tree_id += 1
+            target_tree_roots.append(i)
+
+    target_tree_intervals: List[Tuple[int, int]] = []
+    for i, root in enumerate(target_tree_roots):
+        if i == len(target_tree_roots) - 1:
+            end = len(target_treeids)
+        else:
+            end = target_tree_roots[i + 1]
+        target_tree_intervals.append((root, end))
+    return target_tree_intervals
+
+# 获取每棵树在数组中的区间, 左闭右开
+def get_tree_intervals(onnx_model) -> List[Tuple[int, int]]:
+    tree_roots: List[int] = []
+    # nodes_treeids is ordered
+    nodes_treeids = get_attribute(onnx_model, 'nodes_treeids').ints
+    next_tree_id = 0
+    for i, tree_id in enumerate(nodes_treeids):
+        if tree_id == next_tree_id:
+            next_tree_id += 1
+            tree_roots.append(i)
+
+    tree_intervals: List[Tuple[int, int]] = []
+    for i, root in enumerate(tree_roots):
+        if i == len(tree_roots) - 1:
+            end = len(nodes_treeids)
+        else:
+            end = tree_roots[i + 1]
+        tree_intervals.append((root, end))
+    return tree_intervals
 
 #############
 # Test code #
