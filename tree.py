@@ -66,6 +66,13 @@ class Node:
 
         self.samples = self.left.replace_samples() + self.right.replace_samples()
         return self.samples
+    
+    def update_samples(self) -> int:
+        if self.mode == b'LEAF':
+            return self.samples
+
+        self.samples = self.left.update_samples() + self.right.update_samples()
+        return self.samples
 
     def get_samples_list(self, samples_list: List[int]):
         samples_list.append(self.samples)
@@ -212,7 +219,7 @@ class TreeEnsembleRegressor:
         return regressor
 
     @staticmethod
-    def from_tree(root: 'Node', tree_no: int) -> 'TreeEnsembleRegressor':
+    def from_tree(root: 'Node', tree_no: int = 0) -> 'TreeEnsembleRegressor':
         regressor = TreeEnsembleRegressor()
         TreeEnsembleRegressor.from_tree_internal(regressor, root, tree_no)
         
