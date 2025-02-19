@@ -8,11 +8,11 @@ import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', '-m', type=str, default='nyc-taxi-green-dec-2016_t3_d2_l4_n7_20250204160726')
-parser.add_argument('--strategy', '-s', type=str, default='right', choices=['left', 'right', 'no'])
+parser.add_argument('--conservative', '-c', action='store_true', default=False)
 args = parser.parse_args()
 
 model_name = args.model
-strategy = args.strategy
+conservative = args.conservative
 
 model_path = f'rf_model_output/{model_name}_out.onnx'
 samples_list_path = f'rf_model_output/{model_name}_out_node_samples.csv'
@@ -32,19 +32,19 @@ M_FALSE = 0
 M_TRUE = 1
 M_NO = 2
 
-def find_merge_nodes(node: Node, root: Node, left_branch: bool, result: List[Node]) -> int:
+def find_merge_nodes(node: Node, path_length: int, root: Node, left_branch: bool, result: List[Tuple[Node, int]]) -> int:
     if node.mode == b'LEAF':
         return M_FALSE if node.target_weight == 0 else M_TRUE
     
     same_feature = node.feature_id == root.feature_id
 
     if not same_feature or (same_feature and not left_branch):
-        left_merge_stats = find_merge_nodes(node.left, root, left_branch, result)
+        left_merge_stats = find_merge_nodes(node.left, path_length + 1, root, left_branch, result)
         if left_merge_stats == M_NO:
             return M_NO
     
     if not same_feature or (same_feature and left_branch):
-        right_merge_stats = find_merge_nodes(node.right, root, left_branch, result)
+        right_merge_stats = find_merge_nodes(node.right, path_length + 1, root, left_branch, result)
         if right_merge_stats == M_NO:
             return M_NO
     
@@ -52,28 +52,28 @@ def find_merge_nodes(node: Node, root: Node, left_branch: bool, result: List[Nod
         if left_merge_stats != right_merge_stats:
             return M_NO
         else:
-            update_result(node, root, result)
+            update_result(node, path_length, root, result)
             return left_merge_stats
     
     if same_feature and not left_branch:
         if left_merge_stats != M_NO:
-            update_result(node, root, result)
+            update_result(node, path_length, root, result)
         return left_merge_stats
     
     if same_feature and left_branch:
         if right_merge_stats != M_NO:
-            update_result(node, root, result)
+            update_result(node, path_length, root, result)
         return right_merge_stats
 
-def update_result(node: Node, root: Node, result: List[Node]):
+def update_result(node: Node, path_length: int, root: Node, result: List[Tuple[Node, int]]):
     if node.mode == b'LEAF':
         return
     
     if not result:
-        result.append(node)
+        result.append((node, path_length))
         return
 
-    last = result[-1]
+    last = result[-1][0]
 
     if node.feature_id != last.feature_id:
         return
@@ -82,12 +82,12 @@ def update_result(node: Node, root: Node, result: List[Node]):
     old_delta = abs(round(round(last.value, 6) - round(root.value, 6), 6))
 
     if new_delta == old_delta:
-        result.append(node)
+        result.append((node, path_length))
         return
     
     if new_delta < old_delta:
         result.clear()
-        result.append(node)
+        result.append((node, path_length))
         return
 
     return
@@ -159,13 +159,13 @@ def dfs(node: Node):
     dfs(node.right)
 
     left_merge_nodes = []
-    left_merge_stats = find_merge_nodes(node.left, node, True, left_merge_nodes)
+    left_merge_stats = find_merge_nodes(node.left, 1, node, True, left_merge_nodes)
     if left_merge_stats == M_NO:
         print(node.id, "left cannot merge")
         return
     
     right_merge_nodes = []
-    right_merge_stats = find_merge_nodes(node.right, node, False, right_merge_nodes)
+    right_merge_stats = find_merge_nodes(node.right, 1, node, False, right_merge_nodes)
     if right_merge_stats == M_NO:
         print(node.id, "right cannot merge")
         return
@@ -176,30 +176,27 @@ def dfs(node: Node):
 
     print(node.id, "can merge!", "left_nodes", left_merge_nodes, "right_nodes", right_merge_nodes)
 
-    global strategy
+    max_left_path_length = max([path_length for (_, path_length) in left_merge_nodes], default=0)
+    max_right_path_length = max([path_length for (_, path_length) in right_merge_nodes], default=0)
+    left_merge_nodes = [node for (node, _) in left_merge_nodes]
+    right_merge_nodes = [node for (node, _) in right_merge_nodes]
 
     if left_merge_nodes and right_merge_nodes:
         print(node.id, "can merge both sides!")
-        if strategy == 'no':
+        global conservative
+        if conservative:
             return
-
-    if strategy in ['left', 'no']:
-        # always merge left first
-        if left_merge_nodes:
+        if max_left_path_length > max_right_path_length:
             merge(node, left_merge_nodes, True)
-            return
-        
-        merge(node, right_merge_nodes, False)
+        else:
+            merge(node, right_merge_nodes, False)
         return
     
-    elif strategy in ['right', 'no']:
-        # always merge right first
-        if right_merge_nodes:
-            merge(node, right_merge_nodes, False)
-            return
-        
+    if left_merge_nodes:
         merge(node, left_merge_nodes, True)
         return
+
+    merge(node, right_merge_nodes, False)
 
 for i, root in enumerate(roots):
     print("<tree>", i)
