@@ -8,9 +8,11 @@ import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', '-m', type=str, default='nyc-taxi-green-dec-2016_t3_d2_l4_n7_20250204160726')
+parser.add_argument('--strategy', '-s', type=str, default='right', choices=['left', 'right', 'no'])
 args = parser.parse_args()
 
 model_name = args.model
+strategy = args.strategy
 
 model_path = f'rf_model_output/{model_name}_out.onnx'
 samples_list_path = f'rf_model_output/{model_name}_out_node_samples.csv'
@@ -174,16 +176,30 @@ def dfs(node: Node):
 
     print(node.id, "can merge!", "left_nodes", left_merge_nodes, "right_nodes", right_merge_nodes)
 
+    global strategy
+
     if left_merge_nodes and right_merge_nodes:
         print(node.id, "can merge both sides!")
+        if strategy == 'no':
+            return
 
-    # always merge left first
-    if left_merge_nodes:
-        merge(node, left_merge_nodes, True)
+    if strategy in ['left', 'no']:
+        # always merge left first
+        if left_merge_nodes:
+            merge(node, left_merge_nodes, True)
+            return
+        
+        merge(node, right_merge_nodes, False)
         return
     
-    merge(node, right_merge_nodes, False)
-    return
+    elif strategy in ['right', 'no']:
+        # always merge right first
+        if right_merge_nodes:
+            merge(node, right_merge_nodes, False)
+            return
+        
+        merge(node, left_merge_nodes, True)
+        return
 
 for i, root in enumerate(roots):
     print("<tree>", i)
