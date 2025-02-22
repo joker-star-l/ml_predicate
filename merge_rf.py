@@ -7,7 +7,7 @@ from tree import Node, TreeEnsembleRegressor, model2trees
 import sys
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', '-m', type=str, default='nyc-taxi-green-dec-2016_t3_d2_l4_n7_20250204160726')
+parser.add_argument('--model', '-m', type=str, default='nyc-taxi-green-dec-2016_t10_d10_l849_n1698_20250209144203')
 parser.add_argument('--conservative', '-c', action='store_true', default=False)
 args = parser.parse_args()
 
@@ -38,21 +38,23 @@ def find_merge_nodes(node: Node, path_length: int, root: Node, left_branch: bool
     
     same_feature = node.feature_id == root.feature_id
 
+    # 特征不相同或特征相同但是 node 在 root 的右侧时, 需要递归遍历左子树
     if not same_feature or (same_feature and not left_branch):
         left_merge_stats = find_merge_nodes(node.left, path_length + 1, root, left_branch, result)
         if left_merge_stats == M_NO:
             return M_NO
     
+    # 特征不相同或特征相同但是 node 在 root 的左侧时, 需要递归遍历右子树
     if not same_feature or (same_feature and left_branch):
         right_merge_stats = find_merge_nodes(node.right, path_length + 1, root, left_branch, result)
         if right_merge_stats == M_NO:
             return M_NO
     
     if not same_feature:
+        # 特征不同, 左右两侧的状态不同, 无法合并
         if left_merge_stats != right_merge_stats:
             return M_NO
         else:
-            update_result(node, path_length, root, result)
             return left_merge_stats
     
     if same_feature and not left_branch:
@@ -68,6 +70,8 @@ def find_merge_nodes(node: Node, path_length: int, root: Node, left_branch: bool
 def update_result(node: Node, path_length: int, root: Node, result: List[Tuple[Node, int]]):
     if node.mode == b'LEAF':
         return
+
+    assert node.feature_id == root.feature_id
     
     if not result:
         result.append((node, path_length))
@@ -75,8 +79,7 @@ def update_result(node: Node, path_length: int, root: Node, result: List[Tuple[N
 
     last = result[-1][0]
 
-    if node.feature_id != last.feature_id:
-        return
+    assert node.feature_id == last.feature_id
     
     new_delta = abs(round(round(node.value, 6) - round(root.value, 6), 6))
     old_delta = abs(round(round(last.value, 6) - round(root.value, 6), 6))
