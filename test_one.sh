@@ -4,14 +4,15 @@
 # scale="1G"
 # threads=1
 
-# model_name="nyc-taxi-green-dec-2016_t10_d10_l849_n1698_20250209144203"
-# predicate="1.275"
-# data="nyc-taxi-green-dec-2016"
-# scale="1G"
-# threads=4
+model_name="nyc-taxi-green-dec-2016_t10_d10_l849_n1698_20250209144203"
+predicate="1.275"
+data="nyc-taxi-green-dec-2016"
+scale="1G"
+threads=4
 
-# python run_onnx_rf.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 0
-# python run_onnx_rf.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 1
+python run_onnx_rf.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 0
+python run_onnx_rf.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 1
+python run_onnx_rf.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 2
 
 
 # model_name="bank-marketing_t3_d2_l4_n7_20250209151527"
@@ -20,14 +21,15 @@
 # scale="1G"
 # threads=1
 
-model_name="bank-marketing_t10_d10_l318_n635_20250210050038"
-predicate="1"
-data="bank-marketing"
-scale="1G"
-threads=4
+# model_name="bank-marketing_t10_d10_l318_n635_20250210050038"
+# predicate="1"
+# data="bank-marketing"
+# scale="1G"
+# threads=4
 
-python run_onnx_rf.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 0 --clf
-python run_onnx_rf.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 1 --clf
+# python run_onnx_rf.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 0 --clf
+# python run_onnx_rf.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 1 --clf
+# python run_onnx_rf.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 2 --clf
 
 # python pruning.py -m $model_name -p $predicate
 # python onnx2sklearn.py -m $model_name --pruned 1

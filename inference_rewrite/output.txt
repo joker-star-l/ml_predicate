@@ -1,0 +1,153 @@
+[0, 1, 2, 4, 5, 6, 7, 8]
+conjunction_before_feature_id: 0, lvalue: 2.5, rvalue: -inf
+conjunction_after_feature_id: 0, lvalue: 2.5, rvalue: -inf
+
+conjunction_before_feature_id: 0, lvalue: inf, rvalue: 2.5
+conjunction_after_feature_id: 0, lvalue: inf, rvalue: 2.5
+
+disjunction_before_feature_id: 0, lvalue: 2.5, rvalue: -inf
+disjunction_before_feature_id: 0, max_value: 2.5, min_value: -inf
+disjunction_before_feature_id: 0, lvalue: inf, rvalue: 2.5
+disjunction_before_feature_id: 0, max_value: inf, min_value: -inf
+disjunction_after_feature_id: 0, lvalue: inf, rvalue: -inf
+
+
+
+conjunction_before_feature_id: 1, lvalue: inf, rvalue: 17.03999900817871
+conjunction_before_feature_id: 1, lvalue: inf, rvalue: 5.25
+conjunction_after_feature_id: 1, lvalue: inf, rvalue: 17.03999900817871
+
+conjunction_before_feature_id: 1, lvalue: inf, rvalue: 6.25
+conjunction_after_feature_id: 1, lvalue: inf, rvalue: 6.25
+
+conjunction_before_feature_id: 1, lvalue: inf, rvalue: 6.25
+conjunction_after_feature_id: 1, lvalue: inf, rvalue: 6.25
+
+disjunction_before_feature_id: 1, lvalue: inf, rvalue: 17.03999900817871
+disjunction_before_feature_id: 1, max_value: inf, min_value: 17.03999900817871
+disjunction_before_feature_id: 1, lvalue: inf, rvalue: 6.25
+disjunction_before_feature_id: 1, max_value: inf, min_value: 6.25
+disjunction_before_feature_id: 1, lvalue: inf, rvalue: 6.25
+disjunction_before_feature_id: 1, max_value: inf, min_value: 6.25
+disjunction_after_feature_id: 1, lvalue: inf, rvalue: 6.25
+
+
+
+conjunction_before_feature_id: 2, lvalue: 92.37999725341797, rvalue: -inf
+conjunction_before_feature_id: 2, lvalue: 96.80000305175781, rvalue: -inf
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 65.38999938964844
+conjunction_before_feature_id: 2, lvalue: 121.92500305175781, rvalue: -inf
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 48.91999816894531
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 30.32499885559082
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 17.82499885559082
+conjunction_after_feature_id: 2, lvalue: 92.37999725341797, rvalue: 65.38999938964844
+
+conjunction_before_feature_id: 2, lvalue: 107.27999877929688, rvalue: -inf
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 96.80000305175781
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 65.38999938964844
+conjunction_before_feature_id: 2, lvalue: 121.92500305175781, rvalue: -inf
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 48.91999816894531
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 30.32499885559082
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 17.82499885559082
+conjunction_after_feature_id: 2, lvalue: 107.27999877929688, rvalue: 96.80000305175781
+
+conjunction_before_feature_id: 2, lvalue: 107.27999877929688, rvalue: -inf
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 96.80000305175781
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 65.38999938964844
+conjunction_before_feature_id: 2, lvalue: 121.92500305175781, rvalue: -inf
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 48.91999816894531
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 30.32499885559082
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 17.82499885559082
+conjunction_after_feature_id: 2, lvalue: 107.27999877929688, rvalue: 96.80000305175781
+
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 110.05000305175781
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 107.27999877929688
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 96.80000305175781
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 65.38999938964844
+conjunction_before_feature_id: 2, lvalue: 121.92500305175781, rvalue: -inf
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 48.91999816894531
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 30.32499885559082
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 17.82499885559082
+conjunction_after_feature_id: 2, lvalue: 121.92500305175781, rvalue: 110.05000305175781
+
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 121.92500305175781
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 48.91999816894531
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 30.32499885559082
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 17.82499885559082
+conjunction_after_feature_id: 2, lvalue: inf, rvalue: 121.92500305175781
+
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 121.92500305175781
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 48.91999816894531
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 30.32499885559082
+conjunction_before_feature_id: 2, lvalue: inf, rvalue: 17.82499885559082
+conjunction_after_feature_id: 2, lvalue: inf, rvalue: 121.92500305175781
+
+disjunction_before_feature_id: 2, lvalue: 92.37999725341797, rvalue: 65.38999938964844
+disjunction_before_feature_id: 2, max_value: 92.37999725341797, min_value: 65.38999938964844
+disjunction_before_feature_id: 2, lvalue: 107.27999877929688, rvalue: 96.80000305175781
+disjunction_before_feature_id: 2, max_value: 107.27999877929688, min_value: 65.38999938964844
+disjunction_before_feature_id: 2, lvalue: 107.27999877929688, rvalue: 96.80000305175781
+disjunction_before_feature_id: 2, max_value: 107.27999877929688, min_value: 65.38999938964844
+disjunction_before_feature_id: 2, lvalue: 121.92500305175781, rvalue: 110.05000305175781
+disjunction_before_feature_id: 2, max_value: 121.92500305175781, min_value: 65.38999938964844
+disjunction_before_feature_id: 2, lvalue: inf, rvalue: 121.92500305175781
+disjunction_before_feature_id: 2, max_value: inf, min_value: 65.38999938964844
+disjunction_before_feature_id: 2, lvalue: inf, rvalue: 121.92500305175781
+disjunction_before_feature_id: 2, max_value: inf, min_value: 65.38999938964844
+disjunction_after_feature_id: 2, lvalue: inf, rvalue: 65.38999938964844
+
+
+
+
+
+conjunction_before_feature_id: 5, lvalue: inf, rvalue: 9.0
+conjunction_after_feature_id: 5, lvalue: inf, rvalue: 9.0
+
+conjunction_before_feature_id: 5, lvalue: inf, rvalue: 9.0
+conjunction_after_feature_id: 5, lvalue: inf, rvalue: 9.0
+
+disjunction_before_feature_id: 5, lvalue: inf, rvalue: 9.0
+disjunction_before_feature_id: 5, max_value: inf, min_value: 9.0
+disjunction_before_feature_id: 5, lvalue: inf, rvalue: 9.0
+disjunction_before_feature_id: 5, max_value: inf, min_value: 9.0
+disjunction_after_feature_id: 5, lvalue: inf, rvalue: 9.0
+
+
+
+
+
+conjunction_before_feature_id: 7, lvalue: 7.5, rvalue: -inf
+conjunction_after_feature_id: 7, lvalue: 7.5, rvalue: -inf
+
+disjunction_before_feature_id: 7, lvalue: 7.5, rvalue: -inf
+disjunction_before_feature_id: 7, max_value: 7.5, min_value: -inf
+disjunction_after_feature_id: 7, lvalue: 7.5, rvalue: -inf
+
+
+
+conjunction_before_feature_id: 8, lvalue: 24.5, rvalue: -inf
+conjunction_before_feature_id: 8, lvalue: inf, rvalue: 1.5
+conjunction_after_feature_id: 8, lvalue: 24.5, rvalue: 1.5
+
+conjunction_before_feature_id: 8, lvalue: 44.0, rvalue: -inf
+conjunction_after_feature_id: 8, lvalue: 44.0, rvalue: -inf
+
+conjunction_before_feature_id: 8, lvalue: inf, rvalue: 44.0
+conjunction_after_feature_id: 8, lvalue: inf, rvalue: 44.0
+
+disjunction_before_feature_id: 8, lvalue: 24.5, rvalue: 1.5
+disjunction_before_feature_id: 8, max_value: 24.5, min_value: 1.5
+disjunction_before_feature_id: 8, lvalue: 44.0, rvalue: -inf
+disjunction_before_feature_id: 8, max_value: 44.0, min_value: -inf
+disjunction_before_feature_id: 8, lvalue: inf, rvalue: 44.0
+disjunction_before_feature_id: 8, max_value: inf, min_value: -inf
+disjunction_after_feature_id: 8, lvalue: inf, rvalue: -inf
+
+
+
+feature_id: 0, lvalue: inf, rvalue: -inf, count: 581835, correct: 731, incorrect: 0
+feature_id: 1, lvalue: inf, rvalue: 6.25, count: 987, correct: 113, incorrect: 618
+feature_id: 2, lvalue: inf, rvalue: 65.38999938964844, count: 5411, correct: 465, incorrect: 266
+feature_id: 5, lvalue: inf, rvalue: 9.0, count: 485204, correct: 607, incorrect: 124
+feature_id: 7, lvalue: 7.5, rvalue: -inf, count: 104762, correct: 171, incorrect: 560
+feature_id: 8, lvalue: inf, rvalue: -inf, count: 581835, correct: 731, incorrect: 0
