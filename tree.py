@@ -320,8 +320,8 @@ def model2tree(input_model, samples_list: 'List[int] | None', node_id, parent: '
     samples = int(input_nodes_hitrates[id])
     
     # only for debug
-    tree_samples_list = samples_list[tree_start:tree_end]
-    if tree_samples_list is not None:
+    if samples_list is not None:
+        tree_samples_list = samples_list[tree_start:tree_end]
         if samples != tree_samples_list[id]:
             raise ValueError(f'samples not match: {samples} != {tree_samples_list[id]}')
     

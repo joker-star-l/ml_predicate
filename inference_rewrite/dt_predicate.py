@@ -1,11 +1,13 @@
+import sys
+sys.path.append('../')
+
 import onnx
 import time
 import pandas as pd
 from typing import List, Tuple, Dict
 import argparse
 from tree import model2tree
-import sys
-            
+
 class Predicate:
     def __init__(
         self,
