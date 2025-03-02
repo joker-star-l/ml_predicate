@@ -99,21 +99,24 @@ def generate_predicates(input_model, root:'Node', f) -> 'List[Predicate | None]'
     return predicates    
 
 
-# default_model = 'nyc-taxi-green-dec-2016_d10_l858_n1715_20250103055426'
-# default_threshold = 2.397895 # 5%, satisfy_scale: 0.283178
+# default_model = 'nyc-taxi-green-dec-2016_d10_l855_n1709_20250302095338'
+# default_threshold = 1.865719 # 5%, satisfy_scale: 0.294156
+# # default_threshold = 2.078191 # 1%, satisfy_scale: 0.294156
 # default_data = 'nyc-taxi-green-dec-2016'
 
-# default_model = 'Ailerons_d10_l819_n1637_20241130154251'
-# default_threshold = -0.000438 # 5%, satisfy_scale: 1.0
+# default_model = 'Ailerons_d10_l818_n1635_20250302095846'
+# # default_threshold = -0.00043 # 5%, satisfy_scale: 0.910909
+# default_threshold = -0.000355 # 1%, satisfy_scale: 0.504364
 # default_data = 'Ailerons'
 
-# default_model = 'house_16H_d10_l475_n949_20241130153007'
-# default_threshold = 12.62379 # 5%, satisfy_scale: 0.999693
+# default_model = 'house_16H_d10_l475_n949_20250302095052'
+# # default_threshold = 11.64659 # 5%, satisfy_scale: 0.999693
+# default_threshold = 12.207433 # 1%, satisfy_scale: 0.999693
 # default_data = 'house_16H'
 
-default_model = 'medical_charges_d10_l943_n1885_20241201075016'
-default_threshold = 10.890969 # 5%, satisfy_scale: 0.333947
-# default_threshold = 11.376303 # 1%, satisfy_scale: 0.000785
+default_model = 'medical_charges_d10_l943_n1885_20250302100034'
+# default_threshold = 10.071166 # 5%, satisfy_scale: 0.370509
+default_threshold = 10.631867 # 1%, satisfy_scale: 0.350878
 default_data = 'medical_charges'
 
 parser = argparse.ArgumentParser()

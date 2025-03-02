@@ -40,19 +40,20 @@ python train_dt.py -d $data -td $tree_depth -dc $train_data_count -l $label
 model_name=$(cat ./model/model_name.txt)
 
 if [ "$backend" = "onnxruntime" ]; then
+    python percent_value.py -d $data -l $label -m $model_name -t $threads
     python run_onnx.py -d $data -s $scale -m $model_name -p 0 -t $threads
 
     while read predicate
     do
         python pruning.py -m $model_name -p $predicate
-        python dp.py -m $model_name
+        python merge.py -m $model_name
 
         # python run_onnx.py -d $data -s $scale -m $model_name -p $predicate -t $threads
         python run_onnx.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 1
         python run_onnx.py -d $data -s $scale -m $model_name -p $predicate -t $threads --pruned 2
         
         # break
-    done < ./model/model_leaf_range.txt
+    done < ./model/${model_name}_percent_value_test.txt
 
 elif [ "$backend" = "sklearn" ]; then
     python run_sklearn.py -d $data -s $scale -m $model_name -p 0 -t $threads
