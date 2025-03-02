@@ -8,6 +8,13 @@ from typing import List, Tuple, Dict
 import argparse
 from tree import model2tree
 
+# 1. 选择率越小，效果越好 vs 选择率越极端（越大或越小），效果越好
+# 2. 扩展的纯 SQL vs SQL + ONNX
+# 3. 添加谓词，不修改模型 vs 修改模型
+# 4. 只支持决策树 vs 支持决策树 + 随机森林
+# 5. 单个模型 vs ML pipeline
+# 6. 支持获取模型推理的准确值，不支持获取模型推理的准确值
+
 class Predicate:
     def __init__(
         self,
