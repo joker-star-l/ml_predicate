@@ -1,3 +1,4 @@
+.vscode/
 model/
 rf_model/
 model_clf/
