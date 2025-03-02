@@ -70,19 +70,17 @@ def generate_predicate(root:'Node', feature_id, f) -> 'Predicate | None':
             stack.append(node.left)                
         if node.mode == b'LEAF':
             if (int(f(node.target_weight))):
-                predicates = []
+                predicates = [Predicate(feature_id, float('inf'), float('-inf'))]
                 curr = node
                 while curr.parent is not None:
                     parent = curr.parent
-                    child = curr
                     if parent.feature_id == feature_id:
-                        if child.id == parent.left.id:
+                        if curr.id == parent.left.id:
                             predicates.append(Predicate(feature_id, parent.value, float('-inf')))
                         else:
                             predicates.append(Predicate(feature_id, float('inf'), parent.value))
                     curr = parent
-                if predicates:
-                    Predicates.append(simplify_predicates_conjunction(predicates))
+                Predicates.append(simplify_predicates_conjunction(predicates))
     if Predicates:
         return simplify_predicates_disjunction(Predicates)
     else:
@@ -97,11 +95,29 @@ def generate_predicates(input_model, root:'Node', f) -> 'List[Predicate | None]'
         print('\n')
         # break
     return predicates    
-    
+
+
+# default_model = 'nyc-taxi-green-dec-2016_d10_l858_n1715_20250103055426'
+# default_threshold = 2.397895 # 5%, satisfy_scale: 0.283178
+# default_data = 'nyc-taxi-green-dec-2016'
+
+# default_model = 'Ailerons_d10_l819_n1637_20241130154251'
+# default_threshold = -0.000438 # 5%, satisfy_scale: 1.0
+# default_data = 'Ailerons'
+
+# default_model = 'house_16H_d10_l475_n949_20241130153007'
+# default_threshold = 12.62379 # 5%, satisfy_scale: 0.999693
+# default_data = 'house_16H'
+
+default_model = 'medical_charges_d10_l943_n1885_20241201075016'
+default_threshold = 10.890969 # 5%, satisfy_scale: 0.333947
+# default_threshold = 11.376303 # 1%, satisfy_scale: 0.000785
+default_data = 'medical_charges'
+
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', '-m', type=str, default='nyc-taxi-green-dec-2016_d10_l449_n897_20240903082951')
-parser.add_argument('--threshold', '-t', type=int, default=3.1)
-parser.add_argument('--data', '-d', type=str, default='nyc-taxi-green-dec-2016')
+parser.add_argument('--model', '-m', type=str, default=default_model)
+parser.add_argument('--threshold', '-t', type=int, default=default_threshold)
+parser.add_argument('--data', '-d', type=str, default=default_data)
 args = parser.parse_args()
 
 model_name = args.model
@@ -126,6 +142,10 @@ for p in predicates:
     correct = 0
     incorrect = 0
     if p is not None:
+        if p.lvalue == float('inf') and p.rvalue == float('-inf'):
+            print(f'feature_id: {p.feature_id}, lvalue: {p.lvalue}, rvalue: {p.rvalue}')
+            continue
+
         for _, row in data.iterrows():
             feature_value = row.iloc[p.feature_id]
             if feature_value < p.lvalue and feature_value > p.rvalue:
@@ -135,10 +155,27 @@ for p in predicates:
             else:
                 if row.iloc[-1] > threshold:
                     incorrect += 1
-        print(f'feature_id: {p.feature_id}, lvalue: {p.lvalue}, rvalue: {p.rvalue}, count: {count}, satisfy_scale: {round(count/data.shape[0],2)}, correct: {correct}, incorrect: {incorrect}')
-                 
-    
+        print(f'feature_id: {p.feature_id}, lvalue: {p.lvalue}, rvalue: {p.rvalue}, count: {count}, satisfy_scale: {round(count/data.shape[0],6)}, correct: {correct}, incorrect: {incorrect}')
+print('\n')
 
+useful_predicates = []
+for p in predicates:
+    if p is not None:
+        if p.lvalue == float('inf') and p.rvalue == float('-inf'):
+            continue
+        useful_predicates.append(p)
 
+count = 0
+for _, row in data.iterrows():
+    satisfy = True
+    for p in useful_predicates:
+        feature_value = row.iloc[p.feature_id]
+        if not (feature_value < p.lvalue and feature_value > p.rvalue):
+            satisfy = False
+            break
+    if satisfy:
+        count += 1
 
-    
+print(f'useful_predicates: {len(useful_predicates)}, satisfy_scale: {round(count/data.shape[0],6)}')
+for p in useful_predicates:
+    print(f'feature_id: {p.feature_id}, lvalue: {p.lvalue}, rvalue: {p.rvalue}')
