@@ -75,6 +75,16 @@ model_name = f'{data}_t{tree_count}_d{sum(depth)//tree_count}_l{sum(leaves)//tre
 joblib_path = f'rf_model/{model_name}.joblib'
 onnx_path = f'rf_model/{model_name}.onnx'
 
+n_features = 0
+features = []
+for tree in model.estimators_:
+    n_features = tree.tree_.n_features
+    features += list(tree.tree_.feature)
+
+from collections import Counter
+features = Counter(features)
+print('features:', features)
+
 joblib.dump(model, joblib_path)
 model_onnx = convert_sklearn(model, initial_types=[('float_input', FloatTensorType([None, X_train.shape[1]]))])
 nodes_hitrates = get_attribute(model_onnx, 'nodes_hitrates').floats

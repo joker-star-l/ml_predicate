@@ -131,6 +131,22 @@ class Node:
 
             return sql
 
+    def toEchartsJSON(self) -> dict:
+        if self.mode == b'LEAF':
+            return {
+                'name': self.target_weight,
+                'collapsed': False
+            }
+        
+        return {
+            'name': f'x{self.feature_id} <= {self.value:.6f}',
+            'collapsed': False,
+            'children': [
+                self.left.toEchartsJSON(),
+                self.right.toEchartsJSON()
+            ]
+        }
+
 
 class TreeEnsembleRegressor:
     def __init__(self):

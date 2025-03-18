@@ -89,6 +89,11 @@ def update_result(node: Node, path_length: int, root: Node, result: List[Tuple[N
         return
     
     if new_delta < old_delta:
+        # only for debug
+        print('why the code goes here?')
+        print(f'old_node: id: {last.id}, feature: {last.feature_id}, value: {last.value}')
+        print(f'new_node: id: {node.id}, feature: {node.feature_id}, value: {node.value}')
+
         result.clear()
         result.append((node, path_length))
         return
