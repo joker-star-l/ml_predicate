@@ -7,7 +7,7 @@ from tree import Node, TreeEnsembleRegressor, model2trees
 import sys
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', '-m', type=str, default='nyc-taxi-green-dec-2016_t10_d10_l849_n1698_20250209144203')
+parser.add_argument('--model', '-m', type=str, default='medical_charges_d10_l943_n1885_20250302100034')
 parser.add_argument('--conservative', '-c', action='store_true', default=False)
 args = parser.parse_args()
 
@@ -185,21 +185,20 @@ def dfs(node: Node):
     right_merge_nodes = [node for (node, _) in right_merge_nodes]
 
     if left_merge_nodes and right_merge_nodes:
-        print(node.id, "can merge both sides!")
-        global conservative
-        if conservative:
-            return
-        if max_left_path_length > max_right_path_length:
-            merge(node, left_merge_nodes, True)
-        else:
-            merge(node, right_merge_nodes, False)
+        print(node.id, "[naive do not merge] can merge both sides!")
         return
     
     if left_merge_nodes:
-        merge(node, left_merge_nodes, True)
+        if node.left == left_merge_nodes[0]:
+            merge(node, left_merge_nodes, True)
+            return
+        print(node.id, "[naive do not merge]")
         return
 
-    merge(node, right_merge_nodes, False)
+    if node.right == right_merge_nodes[0]:
+        merge(node, right_merge_nodes, False)
+        return
+    print(node.id, "[naive do not merge]")
 
 for i, root in enumerate(roots):
     print("<tree>", i)
