@@ -57,7 +57,7 @@ ses = ort.InferenceSession(mode_path, sess_options=op, providers=['CPUExecutionP
 input_name = ses.get_inputs()[0].name
 output_name = ses.get_outputs()[0].name
 
-times = 5
+times = 10
 for _ in range(times):
     start0 = time.perf_counter()
     pred = ses.run([output_name], {input_name: X})[0]

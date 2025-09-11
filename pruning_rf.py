@@ -278,7 +278,7 @@ def reg2reg(input_model, removed_nodes_list: List[List[str]], tree_intervals: Li
     nodes_values = []
     for tree_no, (tree_start, tree_end) in enumerate(tree_intervals):
         new_ids = new_ids_list[tree_no]
-        tree_nodes_values = [(ii if new_ids[i][1] == 'BRANCH_LEQ' else 0) for i, ii in enumerate(input_nodes_values[tree_start:tree_end]) if new_ids[i][0] != -1]
+        tree_nodes_values = [(float(ii) if new_ids[i][1] == 'BRANCH_LEQ' else 0.0) for i, ii in enumerate(input_nodes_values[tree_start:tree_end]) if new_ids[i][0] != -1]
         nodes_values.extend(tree_nodes_values)
 
     # # post_transform

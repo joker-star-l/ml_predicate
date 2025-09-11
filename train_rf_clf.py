@@ -29,7 +29,7 @@ data_count = args.data_count
 label = args.label
 
 data_path = f'data/{data}.csv'
-df = pd.read_csv(data_path)
+df = pd.read_csv(data_path, index_col=0)
 data_count = min(data_count, df.shape[0])
 print(f'data_count: {data_count}')
 # TODO
@@ -54,7 +54,7 @@ model = RandomForestClassifier(n_estimators=tree_count, max_depth=tree_depth, n_
 model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
 
-print(f'classification_report: {classification_report(y_test, y_pred)}')
+print(f'{classification_report(y_test, y_pred)}')
 
 depth = [model.estimators_[i].get_depth() for i in range(tree_count)]
 print('depth:', depth)

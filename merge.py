@@ -6,8 +6,10 @@ import argparse
 from tree import Node, TreeEnsembleRegressor, model2trees
 import sys
 
+default_model = 'nyc-taxi-green-dec-2016_d10_l856_n1711_20250317074210'
+
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', '-m', type=str, default='nyc-taxi-green-dec-2016_t10_d10_l849_n1698_20250209144203')
+parser.add_argument('--model', '-m', type=str, default=default_model)
 parser.add_argument('--conservative', '-c', action='store_true', default=False)
 args = parser.parse_args()
 
@@ -32,21 +34,22 @@ M_FALSE = 0
 M_TRUE = 1
 M_NO = 2
 
-def find_merge_nodes(node: Node, path_length: int, root: Node, left_branch: bool, result: List[Tuple[Node, int]]) -> int:
+def find_merge_nodes(node: Node, path_length: int, root: Node, left_branch: bool, result: List[Tuple[Node, int]], paths_length: List[int]) -> int:
     if node.mode == b'LEAF':
+        paths_length.append(path_length)
         return M_FALSE if node.target_weight == 0 else M_TRUE
-    
+
     same_feature = node.feature_id == root.feature_id
 
     # 特征不相同或特征相同但是 node 在 root 的右侧时, 需要递归遍历左子树
     if not same_feature or (same_feature and not left_branch):
-        left_merge_stats = find_merge_nodes(node.left, path_length + 1, root, left_branch, result)
+        left_merge_stats = find_merge_nodes(node.left, path_length + 1, root, left_branch, result, paths_length)
         if left_merge_stats == M_NO:
             return M_NO
     
     # 特征不相同或特征相同但是 node 在 root 的左侧时, 需要递归遍历右子树
     if not same_feature or (same_feature and left_branch):
-        right_merge_stats = find_merge_nodes(node.right, path_length + 1, root, left_branch, result)
+        right_merge_stats = find_merge_nodes(node.right, path_length + 1, root, left_branch, result, paths_length)
         if right_merge_stats == M_NO:
             return M_NO
     
@@ -162,13 +165,15 @@ def dfs(node: Node):
     dfs(node.right)
 
     left_merge_nodes = []
-    left_merge_stats = find_merge_nodes(node.left, 1, node, True, left_merge_nodes)
+    left_paths_length = []
+    left_merge_stats = find_merge_nodes(node.left, 1, node, True, left_merge_nodes, left_paths_length)
     if left_merge_stats == M_NO:
         print(node.id, "left cannot merge")
         return
     
     right_merge_nodes = []
-    right_merge_stats = find_merge_nodes(node.right, 1, node, False, right_merge_nodes)
+    right_paths_length = []
+    right_merge_stats = find_merge_nodes(node.right, 1, node, False, right_merge_nodes, right_paths_length)
     if right_merge_stats == M_NO:
         print(node.id, "right cannot merge")
         return
@@ -179,26 +184,41 @@ def dfs(node: Node):
 
     print(node.id, "can merge!", "left_nodes", left_merge_nodes, "right_nodes", right_merge_nodes)
 
-    max_left_path_length = max([path_length for (_, path_length) in left_merge_nodes], default=0)
-    max_right_path_length = max([path_length for (_, path_length) in right_merge_nodes], default=0)
+    # max_left_path_length = max([path_length for (_, path_length) in left_merge_nodes], default=0)
+    # max_right_path_length = max([path_length for (_, path_length) in right_merge_nodes], default=0)
     left_merge_nodes = [node for (node, _) in left_merge_nodes]
     right_merge_nodes = [node for (node, _) in right_merge_nodes]
+    left2right = min(left_paths_length) - max(right_paths_length)
+    right2left = min(right_paths_length) - max(left_paths_length)
 
-    if left_merge_nodes and right_merge_nodes:
-        print(node.id, "can merge both sides!")
-        global conservative
-        if conservative:
-            return
-        if max_left_path_length > max_right_path_length:
-            merge(node, left_merge_nodes, True)
+    if left_merge_nodes and right_merge_nodes: # 两侧都可以合并
+        print(node.id, "can merge both sides!", f"left_merged: {left_paths_length}, right_merged: {right_paths_length}")
+        if left2right >= 0 or right2left >= 0:
+            print(node.id, "definitely benificial!")
         else:
+            print(node.id, "possibly benificial!")
+
+        if left2right >= 0 and left2right >= right2left: # 从左向右合并一定有收益
+            print(node.id, "choose to merge left")
+            merge(node, left_merge_nodes, True)
+            # the worst
+            # merge(node, right_merge_nodes, False)
+            return
+        if right2left >= 0 and right2left >= left2right: # 从右向左合并一定有收益
+            print(node.id, "choose to merge right")
             merge(node, right_merge_nodes, False)
+            # the worst
+            # merge(node, left_merge_nodes, True)
+            return
+
+        print(node.id, "choose neither side")
         return
-    
-    if left_merge_nodes:
+
+    if left_merge_nodes: # 只能从左向右合并
         merge(node, left_merge_nodes, True)
         return
 
+    # 只能从右向左合并
     merge(node, right_merge_nodes, False)
 
 for i, root in enumerate(roots):

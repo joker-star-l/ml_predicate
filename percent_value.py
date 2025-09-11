@@ -21,8 +21,8 @@ model = args.model
 suffix = '_rf' if args.random_forest else ''
 prefix = 'rf_' if args.random_forest else ''
 
-mode_path = f'model{suffix}/{model}.onnx'
-data_path = f'data{suffix}/{data}.csv'
+mode_path = f'{prefix}model/{model}.onnx'
+data_path = f'data/{data}.csv'
 out_path = f'{prefix}model/{model}_percent_value.txt'
 out_test_path = f'{prefix}model/{model}_percent_value_test.txt'
 

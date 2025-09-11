@@ -6,8 +6,8 @@ import argparse
 from tree import Node, TreeEnsembleRegressor, model2trees
 import sys
 
-# default_model = 'nyc-taxi-green-dec-2016_t10_d10_l849_n1698_20250209144203'
-default_model = 'medical_charges_d10_l943_n1885_20250302100034'
+# default_model = 'bank-marketing_t10_d10_l318_n635_20250210050038'
+default_model = 'nyc-taxi-green-dec-2016_t10_d10_l849_n1698_20250209144203'
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', '-m', type=str, default=default_model)
@@ -187,6 +187,10 @@ def dfs(node: Node):
 
     if left_merge_nodes and right_merge_nodes:
         print(node.id, "[naive do not merge] can merge both sides!")
+        if max_left_path_length == 1 or max_right_path_length == 1:
+            print(node.id, "definitely benificial!")
+        else:
+            print(node.id, "possibly benificial!")
         return
     
     if left_merge_nodes:
