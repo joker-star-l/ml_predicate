@@ -1,7 +1,8 @@
 import pandas as pd
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
+from sklearn.metrics import mean_squared_error
+from sklearn.pipeline import Pipeline
 import joblib
 import onnx
 import datetime
@@ -12,10 +13,10 @@ import argparse
 from utils import get_attribute
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--data', '-d', type=str,  default='wine_quality')
+parser.add_argument('--data', '-d', type=str,  default='house_16H')
 parser.add_argument('--tree_depth', '-td', type=int, default=10)
 parser.add_argument('--data_count', '-dc', type=int, default=10000)
-parser.add_argument('--label', '-l', type=str, default='quality')
+parser.add_argument('--label', '-l', type=str, default='price')
 args = parser.parse_args()
 
 data = args.data
@@ -33,23 +34,18 @@ print(f'data_count: {data_count}')
 X = df.drop(columns=[label])
 y = df[label]
 
-# only for test
-# for i in range(len(y)):
-#     if i % 3 == 0:
-#         y[i] = 2
-
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.001, random_state=42)
 
-X_train = X_train.values
-X_test = X_test.values
+# X_train = X_train.values
+# X_test = X_test.values
 y_train = y_train.values
 y_test = y_test.values
 
-model = DecisionTreeClassifier(max_depth=tree_depth)
+model = Pipeline([('regressor', DecisionTreeRegressor(max_depth=tree_depth))])
 model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
 
-print(f'classification_report: {classification_report(y_test, y_pred)}')
+print(f'mse: {mean_squared_error(y_test, y_pred)}')
 
 depth = model.get_depth()
 print('depth:', depth)
@@ -65,7 +61,7 @@ joblib_path = f'model/{model_name}.joblib'
 onnx_path = f'model/{model_name}.onnx'
 
 joblib.dump(model, joblib_path)
-model_onnx = convert_sklearn(model, initial_types=[('float_input', FloatTensorType([None, X_train.shape[1]]))], options={id(model): {'zipmap': False}})
+model_onnx = convert_sklearn(model, initial_types=[('float_input', FloatTensorType([None, X_train.shape[1]]))])
 nodes_hitrates = get_attribute(model_onnx, 'nodes_hitrates').floats
 for i in range(len(nodes_hitrates)):
     nodes_hitrates[i] = model.tree_.n_node_samples[i]
@@ -74,8 +70,25 @@ onnx.save_model(model_onnx, onnx_path)
 with open('model/model_name.txt', 'w', encoding='utf-8') as f:
     f.write(f'{model_name}\n')
 
+bucket_num = 10
 with open('model/model_leaf_range.txt', 'w', encoding='utf-8') as f:
-    labels = list(set(y))
-    labels.sort()
-    for label in labels:
-        f.write(f'{label}\n')
+    leaves = list(set(get_attribute(model_onnx, 'target_weights').floats))
+    leaves.sort()
+
+    # # 等宽直方图
+    # second_min_leaf = leaves[1]
+    # second_max_leaf = leaves[-2]
+    # bucket_size = (second_max_leaf - second_min_leaf) / bucket_num
+    # print('second_min_leaf:', second_min_leaf, 'second_max_leaf:', second_max_leaf, 'bucket_size:', bucket_size)
+    # for i in range(bucket_num):
+    #     second_min_leaf += bucket_size
+    #     f.write(str(round(second_min_leaf, 6)) + '\n')
+
+    # 等高直方图
+    bucket_size = len(leaves) / 100
+    print('bucket_size:', bucket_size)
+    for i in range(1, 5 + 1):
+        f.write(str(round(leaves[int(i * bucket_size)], 6)) + '\n')
+    for i in range(95, 99 + 1):
+        f.write(str(round(leaves[int(i * bucket_size)], 6)) + '\n')
+

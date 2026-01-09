@@ -5,20 +5,20 @@ import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, confusion_matrix, matthews_corrcoef
 
-# data = 'nyc-taxi-green-dec-2016'
-# model = 'nyc-taxi-green-dec-2016_t100_d10_l842_n1684_20250401145600'
-# label = 'tipamount'
-# last_idx = 99
+data = 'nyc-taxi-green-dec-2016'
+model = 'nyc-taxi-green-dec-2016_t100_d10_l842_n1684_20250401145600'
+label = 'tipamount'
+last_idx = 99
 
 # data = 'tpch-q9'
 # model = 'tpch-q9_t100_d10_l1023_n2046_20250402120134'
 # label = 'amount'
 # last_idx = 99
 
-data = 'bike_sharing_demand'
-model = 'bike_sharing_demand_t100_d10_l744_n1488_20250402122152'
-label = 'count'
-last_idx = 99
+# data = 'bike_sharing_demand'
+# model = 'bike_sharing_demand_t100_d10_l744_n1488_20250402122152'
+# label = 'count'
+# last_idx = 99
 
 # data = 'house_16H'
 # model = 'house_16H_d10_l451_n902_20250119173926'
@@ -46,25 +46,26 @@ predicates = [predicates[i - 1] for i in percent]
 model_path = f'rf_model/{model}.joblib'
 data_path = f'data/{data}.csv'
 output_path = f'rf_model_acc_output/{model}.csv'
+output_path2 = f'rf_model_acc_output/{model}-variance.csv'
 with open(output_path, 'w', encoding='utf-8') as f:
     f.write('type,index,predicate,value\n')
 
 df = pd.read_csv(data_path)
 
-# skmodel: RandomForestRegressor = joblib.load(model_path)
+skmodel: RandomForestRegressor = joblib.load(model_path)
 
-pipeline = joblib.load(model_path)
-preprocessor = pipeline.named_steps['preprocessor']
-skmodel = pipeline.named_steps['Regressor']
+# pipeline = joblib.load(model_path)
+# preprocessor = pipeline.named_steps['preprocessor']
+# skmodel = pipeline.named_steps['Regressor']
 
-X = preprocessor.transform(df.drop(columns=[label]))
-# X = df.drop(columns=[label]).values
+# X = preprocessor.transform(df.drop(columns=[label]))
+X = df.drop(columns=[label]).values
 y = df[label].values
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
 X = X_test
 y = y_test
-
+# print("Xshape", X.shape)
 # predicates[0] = np.median(y)
 # print('median: ', predicates[0])
 
@@ -97,10 +98,13 @@ for i, f in enumerate(functions):
     # print('rf prediction: ', predi)
 
     predis = []
+    variances = []
     for j, p in enumerate(preds):
         pj = functions[i](p)
         predis.append(pj)
-
+        variances.append(pj)
+        
+    # print("predis shape", np.array(predis).shape)
     pi_sum = np.array(sum(predis)) > n / 2
     # print('dt prediction: ', pi_sum)
 
@@ -134,7 +138,12 @@ for i, f in enumerate(functions):
     print(dt_precision, dt_recall, dt_f1, dt_mcc)
     print(rf_precision, rf_recall, rf_f1, rf_mcc)
     print(dt_rf_precision, dt_rf_recall, dt_rf_f1, dt_rf_mcc)
-
+    
+    variances = np.array(variances)
+    variance = np.mean(np.var(variances, axis=0))
+    with open(output_path2, 'a', encoding='utf-8') as f:
+        f.write(f'variance,{i},{predicates[i]},{variance}\n')
+    
     with open(output_path, 'a', encoding='utf-8') as f:
         f.write(f'dt_accuracy,{i},{predicates[i]},{dt_accuracy}\n')
         f.write(f'dt_precision,{i},{predicates[i]},{dt_precision}\n')

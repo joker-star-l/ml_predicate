@@ -13,8 +13,8 @@ from utils import get_attribute
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--tree_depth', '-td', type=int, default=2)
-parser.add_argument('--tree_count', '-tc', type=int, default=3)
+parser.add_argument('--tree_depth', '-td', type=int, default=10)
+parser.add_argument('--tree_count', '-tc', type=int, default=100)
 parser.add_argument('--data_count', '-dc', type=int, default=10000)
 
 parser.add_argument('--data', '-d', type=str,  default='bank-marketing')
